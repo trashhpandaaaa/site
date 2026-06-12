@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
-import NavAuth from "../components/NavAuth";
+import SiteNav from "../components/SiteNav";
+import useScrollReveal from "../components/useScrollReveal";
+import { castBattleVote } from "../components/voteActions";
 
 function delayClass(index) {
   if (index === 0) return "fi d1";
@@ -15,115 +17,13 @@ function delayClass(index) {
 export default function BattleClient({ battles = [] }) {
   const battleVotedRef = useRef({});
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      document.querySelectorAll(".fi").forEach((el) => el.classList.add("show"));
-    }, 80);
+  useScrollReveal();
 
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, []);
-
-  const castBattle = async (id, side) => {
-    if (battleVotedRef.current[id]) return;
-    battleVotedRef.current[id] = side;
-
-    const leftEl = document.getElementById(`b-${id}-av`);
-    const rightEl = document.getElementById(`b-${id}-bv`);
-    const left = Number(leftEl?.dataset.count || leftEl?.textContent || 0);
-    const right = Number(rightEl?.dataset.count || rightEl?.textContent || 0);
-
-    const nextLeft = left + (side === "a" ? 1 : 0);
-    const nextRight = right + (side === "b" ? 1 : 0);
-    const total = nextLeft + nextRight;
-    const leftPct = Math.round((nextLeft / total) * 100);
-    const rightPct = 100 - leftPct;
-
-    if (leftEl) {
-      leftEl.textContent = `${nextLeft.toLocaleString("en-US")} votes`;
-      leftEl.dataset.count = String(nextLeft);
-    }
-    if (rightEl) {
-      rightEl.textContent = `${nextRight.toLocaleString("en-US")} votes`;
-      rightEl.dataset.count = String(nextRight);
-    }
-
-    const leftFill = document.getElementById(`b-${id}-fa`);
-    const rightFill = document.getElementById(`b-${id}-fb`);
-    if (leftFill) leftFill.style.width = `${leftPct}%`;
-    if (rightFill) rightFill.style.width = `${rightPct}%`;
-    const leftPctEl = document.getElementById(`b-${id}-apct`);
-    const rightPctEl = document.getElementById(`b-${id}-bpct`);
-    if (leftPctEl) leftPctEl.textContent = `${leftPct}%`;
-    if (rightPctEl) rightPctEl.textContent = `${rightPct}%`;
-    const totalEl = document.getElementById(`b-${id}-tot`);
-    if (totalEl) totalEl.textContent = `${total.toLocaleString("en-US")} total votes`;
-
-    try {
-      const response = await fetch("/api/votes/battle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id, side })
-      });
-
-      if (response.status === 401) {
-        window.location.href = "/sign-in";
-        return;
-      }
-
-      if (!response.ok) return;
-
-      const payload = await response.json();
-      if (!payload?.battle) return;
-      const updatedLeft = payload.battle.left_votes || 0;
-      const updatedRight = payload.battle.right_votes || 0;
-      const updatedTotal = updatedLeft + updatedRight;
-      const updatedLeftPct = updatedTotal
-        ? Math.round((updatedLeft / updatedTotal) * 100)
-        : 0;
-      const updatedRightPct = 100 - updatedLeftPct;
-
-      if (leftEl) {
-        leftEl.textContent = `${updatedLeft.toLocaleString("en-US")} votes`;
-        leftEl.dataset.count = String(updatedLeft);
-      }
-      if (rightEl) {
-        rightEl.textContent = `${updatedRight.toLocaleString("en-US")} votes`;
-        rightEl.dataset.count = String(updatedRight);
-      }
-      if (leftFill) leftFill.style.width = `${updatedLeftPct}%`;
-      if (rightFill) rightFill.style.width = `${updatedRightPct}%`;
-      if (leftPctEl) leftPctEl.textContent = `${updatedLeftPct}%`;
-      if (rightPctEl) rightPctEl.textContent = `${updatedRightPct}%`;
-      if (totalEl) {
-        totalEl.textContent = `${updatedTotal.toLocaleString("en-US")} total votes`;
-      }
-    } catch (error) {
-      // Ignore network errors.
-    }
-  };
+  const castBattle = (id, side) => castBattleVote(battleVotedRef, id, side);
 
   return (
     <>
-      <nav id="mainnav">
-        <a href="/" className="logo">
-          Kasto<em>Chha</em>
-        </a>
-        <div className="nav-links">
-          <a href="/trending" className="nav-link">Trending</a>
-          <a href="/popular" className="nav-link">Popular</a>
-          <a href="/featured" className="nav-link">Featured</a>
-          <a href="/battle" className="nav-link">Battle</a>
-          <a href="/experience" className="nav-link">Experience</a>
-        </div>
-        <div className="nav-actions">
-          <a className="btn-outline" href="/chat">Ask community</a>
-          <a className="btn-red" href="/experience">Share review</a>
-          <NavAuth />
-        </div>
-      </nav>
+      <SiteNav />
 
       <div className="page-hero">
         <div className="page-glow"></div>

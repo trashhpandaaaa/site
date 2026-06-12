@@ -27,7 +27,8 @@ const dmMono = DM_Mono({
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: "KastoChha - Nepal ko Real Talk",
-  description: "Front-end prototype for KastoChha, a community opinion platform.",
+  description:
+    "Real opinions from real people across Nepal. Honest experiences on products, services, careers, and everyday life - no paid hype.",
   openGraph: {
     title: "KastoChha - Nepal ko Real Talk",
     description: "Community powered opinions from across Nepal.",

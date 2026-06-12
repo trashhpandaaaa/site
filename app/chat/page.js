@@ -2,8 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 
 import ChatClient from "./ChatClient";
 import {
-  getPopularTopics,
   getRecentChatQueries,
+  getReviews,
   getTrendingTopics,
   getUserChatQueries
 } from "../../lib/supabase/queries";
@@ -15,9 +15,9 @@ function uniqueStrings(values) {
 export default async function ChatPage() {
   const { userId } = await auth();
 
-  const [trending, popular, recentQueries, historyQueries] = await Promise.all([
+  const [trending, reviews, recentQueries, historyQueries] = await Promise.all([
     getTrendingTopics(),
-    getPopularTopics(),
+    getReviews(8),
     getRecentChatQueries(8),
     getUserChatQueries(userId, 8)
   ]);
@@ -26,7 +26,7 @@ export default async function ChatPage() {
   const history = uniqueStrings(historyQueries.map((item) => item.query));
   const prompts = uniqueStrings([
     ...trending.map((topic) => topic.title),
-    ...popular.map((topic) => topic.title)
+    ...reviews.map((review) => review.topic || review.title)
   ]).slice(0, 4);
 
   const fallbackCards = [];
@@ -40,11 +40,12 @@ export default async function ChatPage() {
         : `${(trending[0].likes || 0).toLocaleString("en-US")} likes`
     });
   }
-  if (popular[0]) {
+  if (reviews[0]) {
+    const score = (reviews[0].upvotes || 0) - (reviews[0].downvotes || 0);
     fallbackCards.push({
-      title: "All-time favorite",
-      value: popular[0].title,
-      sub: `${(popular[0].comments || 0).toLocaleString("en-US")} comments`
+      title: "Latest experience",
+      value: reviews[0].topic || reviews[0].title,
+      sub: `net ${score >= 0 ? "+" : ""}${score} community score`
     });
   }
   if (recent[0]) {

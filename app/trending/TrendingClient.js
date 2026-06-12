@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
-import NavAuth from "../components/NavAuth";
+import SiteNav from "../components/SiteNav";
+import useScrollReveal from "../components/useScrollReveal";
+import { castTrendingVote } from "../components/voteActions";
 
 function formatTimeAgo(value) {
   if (!value) return "";
@@ -27,113 +29,13 @@ function delayClass(index) {
 export default function TrendingClient({ topics = [] }) {
   const votedRef = useRef({});
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      document.querySelectorAll(".fi").forEach((el) => el.classList.add("show"));
-    }, 80);
+  useScrollReveal();
 
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, []);
-
-  const castVote = async (id, side) => {
-    if (votedRef.current[id]) return;
-    votedRef.current[id] = side;
-
-    const yesEl = document.getElementById(`tr-${id}-y`);
-    const noEl = document.getElementById(`tr-${id}-n`);
-    const yes = Number(yesEl?.dataset.count || yesEl?.textContent || 0);
-    const no = Number(noEl?.dataset.count || noEl?.textContent || 0);
-
-    const nextYes = yes + (side === "yes" ? 1 : 0);
-    const nextNo = no + (side === "no" ? 1 : 0);
-
-    if (yesEl) {
-      yesEl.textContent = nextYes.toLocaleString("en-US");
-      yesEl.dataset.count = String(nextYes);
-    }
-    if (noEl) {
-      noEl.textContent = nextNo.toLocaleString("en-US");
-      noEl.dataset.count = String(nextNo);
-    }
-
-    const pct = Math.round((nextYes / (nextYes + nextNo)) * 100);
-    const bar = document.getElementById(`tr-${id}-bar`);
-    if (bar) bar.style.width = `${pct}%`;
-
-    const card = document.getElementById(`tr-${id}`);
-    if (card) {
-      const yesBtn = card.querySelector(".vbtn.yes");
-      const noBtn = card.querySelector(".vbtn.no");
-      if (yesBtn) yesBtn.classList.toggle("voted", side === "yes");
-      if (noBtn) noBtn.classList.toggle("voted", side === "no");
-      const totalEl = card.querySelector(".vote-total");
-      if (totalEl) {
-        totalEl.textContent = `${(nextYes + nextNo).toLocaleString("en-US")} total votes`;
-      }
-    }
-
-    try {
-      const response = await fetch("/api/votes/trending", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id, side })
-      });
-
-      if (response.status === 401) {
-        window.location.href = "/sign-in";
-        return;
-      }
-
-      if (!response.ok) return;
-
-      const payload = await response.json();
-      if (!payload?.topic) return;
-
-      const updatedYes = payload.topic.votes_yes || 0;
-      const updatedNo = payload.topic.votes_no || 0;
-      if (yesEl) {
-        yesEl.textContent = updatedYes.toLocaleString("en-US");
-        yesEl.dataset.count = String(updatedYes);
-      }
-      if (noEl) {
-        noEl.textContent = updatedNo.toLocaleString("en-US");
-        noEl.dataset.count = String(updatedNo);
-      }
-      const updatedPct = Math.round((updatedYes / (updatedYes + updatedNo)) * 100);
-      if (bar) bar.style.width = `${updatedPct}%`;
-      if (card) {
-        const totalEl = card.querySelector(".vote-total");
-        if (totalEl) {
-          totalEl.textContent = `${(updatedYes + updatedNo).toLocaleString("en-US")} total votes`;
-        }
-      }
-    } catch (error) {
-      // Ignore network errors.
-    }
-  };
+  const castVote = (id, side) => castTrendingVote(votedRef, id, side);
 
   return (
     <>
-      <nav id="mainnav">
-        <a href="/" className="logo">
-          Kasto<em>Chha</em>
-        </a>
-        <div className="nav-links">
-          <a href="/trending" className="nav-link">Trending</a>
-          <a href="/popular" className="nav-link">Popular</a>
-          <a href="/featured" className="nav-link">Featured</a>
-          <a href="/battle" className="nav-link">Battle</a>
-          <a href="/experience" className="nav-link">Experience</a>
-        </div>
-        <div className="nav-actions">
-          <a className="btn-outline" href="/chat">Ask community</a>
-          <a className="btn-red" href="/experience">Share review</a>
-          <NavAuth />
-        </div>
-      </nav>
+      <SiteNav />
 
       <div className="page-hero">
         <div className="page-glow"></div>

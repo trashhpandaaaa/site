@@ -1,5 +1,5 @@
 import { IconBook, IconBriefcase, IconHome } from "../components/icons";
-import NavAuth from "../components/NavAuth";
+import SiteNav from "../components/SiteNav";
 
 import { getFeaturedStories } from "../../lib/supabase/queries";
 
@@ -16,23 +16,7 @@ export default async function FeaturedPage() {
 
   return (
     <>
-      <nav id="mainnav">
-        <a href="/" className="logo">
-          Kasto<em>Chha</em>
-        </a>
-        <div className="nav-links">
-          <a href="/trending" className="nav-link">Trending</a>
-          <a href="/popular" className="nav-link">Popular</a>
-          <a href="/featured" className="nav-link">Featured</a>
-          <a href="/battle" className="nav-link">Battle</a>
-          <a href="/experience" className="nav-link">Experience</a>
-        </div>
-        <div className="nav-actions">
-          <a className="btn-outline" href="/chat">Ask community</a>
-          <a className="btn-red" href="/experience">Share review</a>
-          <NavAuth />
-        </div>
-      </nav>
+      <SiteNav />
 
       <div className="page-hero">
         <div className="page-glow"></div>

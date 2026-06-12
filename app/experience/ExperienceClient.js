@@ -2,15 +2,11 @@
 
 import { useMemo, useState } from "react";
 
-import NavAuth from "../components/NavAuth";
-import { IconArrowDown, IconArrowUp, IconChat } from "../components/icons";
+import SiteNav from "../components/SiteNav";
+import TopicThread from "../components/TopicThread";
+import useReviewVotes from "../components/useReviewVotes";
 import { topicSlug } from "../../lib/slug";
-
-const VERDICT_TONES = {
-  "ramro chha": "pos",
-  "thikai chha": "neu",
-  "naramro chha": "neg"
-};
+import { buildTopics } from "../../lib/topics";
 
 const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
 const CATEGORY_OPTIONS = [
@@ -22,90 +18,12 @@ const CATEGORY_OPTIONS = [
   "Lifestyle"
 ];
 
-function verdictTone(value) {
-  if (!value) return "neu";
-  return VERDICT_TONES[value.trim().toLowerCase()] || "neu";
-}
-
-function formatTimeAgo(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  const diffMs = Date.now() - date.getTime();
-  const minutes = Math.max(1, Math.floor(diffMs / 60000));
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  const months = Math.floor(days / 30);
-  return `${months}mo ago`;
-}
-
-function scoreOf(item) {
-  return (item.upvotes || 0) - (item.downvotes || 0);
-}
-
-// Collapse a flat list of reviews into topic threads keyed by their slug, so
-// multiple experiences about the same subject live under one heading.
-function buildTopics(items) {
-  const map = new Map();
-
-  for (const item of items) {
-    const slug =
-      item.topic_slug || topicSlug(item.topic || item.title) || "general";
-    if (!map.has(slug)) {
-      map.set(slug, { slug, experiences: [] });
-    }
-    map.get(slug).experiences.push(item);
-  }
-
-  const topics = [];
-  for (const group of map.values()) {
-    const experiences = group.experiences;
-    // The oldest post sets the canonical title/category for the thread.
-    const oldest = experiences.reduce((acc, item) =>
-      new Date(item.created_at) < new Date(acc.created_at) ? item : acc
-    );
-    const lastActivity = experiences.reduce(
-      (acc, item) =>
-        new Date(item.created_at) > new Date(acc) ? item.created_at : acc,
-      experiences[0].created_at
-    );
-
-    const verdicts = { pos: 0, neu: 0, neg: 0 };
-    let score = 0;
-    for (const item of experiences) {
-      verdicts[verdictTone(item.verdict)] += 1;
-      score += scoreOf(item);
-    }
-
-    const top = experiences.reduce((acc, item) =>
-      scoreOf(item) > scoreOf(acc) ? item : acc
-    );
-
-    topics.push({
-      slug: group.slug,
-      title: oldest.topic || oldest.title,
-      category: oldest.category || "General",
-      experiences,
-      top,
-      count: experiences.length,
-      score,
-      verdicts,
-      lastActivity
-    });
-  }
-
-  return topics;
-}
-
 export default function ExperienceClient({ reviews = [] }) {
-  const [items, setItems] = useState(reviews);
+  const { items, setItems, voted, handleVote } = useReviewVotes(reviews);
   const [submitting, setSubmitting] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
   const [sortMode, setSortMode] = useState("active");
   const [expanded, setExpanded] = useState(() => new Set());
-  const [voted, setVoted] = useState(() => new Set());
   const [error, setError] = useState("");
 
   const [topic, setTopic] = useState("");
@@ -166,57 +84,6 @@ export default function ExperienceClient({ reviews = [] }) {
     });
   };
 
-  const handleVote = async (id, direction) => {
-    if (voted.has(id)) return;
-    setVoted((prev) => new Set(prev).add(id));
-
-    setItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        const next = { ...item };
-        if (direction === "up") next.upvotes = (next.upvotes || 0) + 1;
-        else next.downvotes = (next.downvotes || 0) + 1;
-        return next;
-      })
-    );
-
-    try {
-      const response = await fetch("/api/votes/review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id, direction })
-      });
-
-      if (response.status === 401) {
-        window.location.href = "/sign-in";
-        return;
-      }
-
-      if (!response.ok) {
-        setVoted((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-        return;
-      }
-
-      const payload = await response.json();
-      if (payload?.review) {
-        setItems((prev) =>
-          prev.map((item) => (item.id === id ? payload.review : item))
-        );
-      }
-    } catch {
-      setVoted((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    }
-  };
-
   const submitReview = async (event) => {
     event.preventDefault();
     if (submitting) return;
@@ -275,23 +142,7 @@ export default function ExperienceClient({ reviews = [] }) {
 
   return (
     <>
-      <nav id="mainnav">
-        <a href="/" className="logo">
-          Kasto<em>Chha</em>
-        </a>
-        <div className="nav-links">
-          <a href="/trending" className="nav-link">Trending</a>
-          <a href="/popular" className="nav-link">Popular</a>
-          <a href="/featured" className="nav-link">Featured</a>
-          <a href="/battle" className="nav-link">Battle</a>
-          <a href="/experience" className="nav-link">Experience</a>
-        </div>
-        <div className="nav-actions">
-          <a className="btn-outline" href="/chat">Ask community</a>
-          <a className="btn-red" href="#share-review">Share a story</a>
-          <NavAuth />
-        </div>
-      </nav>
+      <SiteNav shareHref="#share-review" />
 
       <div className="page-hero">
         <div className="page-glow"></div>
@@ -363,141 +214,16 @@ export default function ExperienceClient({ reviews = [] }) {
                     </div>
                   </div>
                 ) : (
-                  visibleTopics.map((topicItem) => {
-                    const isOpen = expanded.has(topicItem.slug);
-                    const total =
-                      topicItem.verdicts.pos +
-                      topicItem.verdicts.neu +
-                      topicItem.verdicts.neg;
-                    const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
-
-                    return (
-                      <article className="topic-thread" key={topicItem.slug}>
-                        <header className="topic-head">
-                          <div className="topic-meta-top">
-                            <span className="topic-cat">{topicItem.category}</span>
-                            <span className="topic-count-pill">
-                              {topicItem.count} experience
-                              {topicItem.count === 1 ? "" : "s"}
-                            </span>
-                          </div>
-                          <h2 className="topic-title">{topicItem.title}</h2>
-                        </header>
-
-                        {total > 0 ? (
-                          <div className="verdict-block">
-                            <div className="verdict-bar" aria-hidden="true">
-                              {topicItem.verdicts.pos > 0 ? (
-                                <span
-                                  className="verdict-seg pos"
-                                  style={{ width: `${pct(topicItem.verdicts.pos)}%` }}
-                                />
-                              ) : null}
-                              {topicItem.verdicts.neu > 0 ? (
-                                <span
-                                  className="verdict-seg neu"
-                                  style={{ width: `${pct(topicItem.verdicts.neu)}%` }}
-                                />
-                              ) : null}
-                              {topicItem.verdicts.neg > 0 ? (
-                                <span
-                                  className="verdict-seg neg"
-                                  style={{ width: `${pct(topicItem.verdicts.neg)}%` }}
-                                />
-                              ) : null}
-                            </div>
-                            <div className="verdict-legend">
-                              <span className="verdict-chip pos">
-                                Ramro {topicItem.verdicts.pos}
-                              </span>
-                              <span className="verdict-chip neu">
-                                Thikai {topicItem.verdicts.neu}
-                              </span>
-                              <span className="verdict-chip neg">
-                                Naramro {topicItem.verdicts.neg}
-                              </span>
-                            </div>
-                          </div>
-                        ) : null}
-
-                        {!isOpen ? (
-                          <p className="topic-preview">
-                            <span className="topic-preview-by">
-                              {topicItem.top.author_name || "Anonymous"}:
-                            </span>{" "}
-                            {topicItem.top.summary}
-                          </p>
-                        ) : null}
-
-                        <div className="topic-foot">
-                          <button
-                            type="button"
-                            className="topic-toggle"
-                            onClick={() => toggleTopic(topicItem.slug)}
-                            aria-expanded={isOpen}
-                          >
-                            <IconChat className="icon" />
-                            {isOpen
-                              ? "Hide experiences"
-                              : `Read ${topicItem.count} experience${
-                                  topicItem.count === 1 ? "" : "s"
-                                }`}
-                          </button>
-                          <span className="topic-foot-meta">
-                            net {topicItem.score >= 0 ? "+" : ""}
-                            {topicItem.score} · updated{" "}
-                            {formatTimeAgo(topicItem.lastActivity)}
-                          </span>
-                        </div>
-
-                        {isOpen ? (
-                          <div className="exp-list">
-                            {topicItem.experiences.map((exp) => {
-                              const tone = verdictTone(exp.verdict);
-                              const timeLabel = formatTimeAgo(exp.created_at);
-                              return (
-                                <div className="exp-item" key={exp.id}>
-                                  <div className="review-vote">
-                                    <button
-                                      type="button"
-                                      className="vote-btn"
-                                      aria-label="Upvote"
-                                      onClick={() => handleVote(exp.id, "up")}
-                                    >
-                                      <IconArrowUp className="icon" />
-                                    </button>
-                                    <span className="vote-count">{scoreOf(exp)}</span>
-                                    <button
-                                      type="button"
-                                      className="vote-btn"
-                                      aria-label="Downvote"
-                                      onClick={() => handleVote(exp.id, "down")}
-                                    >
-                                      <IconArrowDown className="icon" />
-                                    </button>
-                                  </div>
-                                  <div className="exp-body">
-                                    <div className="exp-meta">
-                                      <span className="exp-author">
-                                        {exp.author_name || "Anonymous"}
-                                      </span>
-                                      {timeLabel ? <span>{timeLabel}</span> : null}
-                                      {exp.verdict ? (
-                                        <span className={`exp-verdict ${tone}`}>
-                                          {exp.verdict}
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                    <p className="exp-text">{exp.summary}</p>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : null}
-                      </article>
-                    );
-                  })
+                  visibleTopics.map((topicItem) => (
+                    <TopicThread
+                      key={topicItem.slug}
+                      topic={topicItem}
+                      isOpen={expanded.has(topicItem.slug)}
+                      onToggle={toggleTopic}
+                      onVote={handleVote}
+                      voted={voted}
+                    />
+                  ))
                 )}
               </div>
             </div>

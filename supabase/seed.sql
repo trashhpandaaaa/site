@@ -2,16 +2,8 @@ BEGIN;
 
 -- Minimal seeds for KastoChha demo content
 
-INSERT INTO snapshots ("order", kicker, title, subtitle, meta_primary, meta_secondary)
-VALUES (1, 'DAILY', 'Daily Snapshot', 'Quick local signals', 'Signal A', 'Signal B')
-ON CONFLICT DO NOTHING;
-
 INSERT INTO trending_topics (rank, category, title, description, badge_label, badge_tone, trend_note, votes_yes, votes_no, likes, comments)
 VALUES (1, 'Technology', 'Mobile data price hike', 'Discussion on recent mobile data price increases', 'Hot', 'positive', 'up 12%', 10, 2, 50, 8)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO popular_topics (rank, category, title, likes, comments, sentiment_label, sentiment_tone)
-VALUES (1, 'Finance', 'Banks increasing fees', 150, 34, 'Mostly negative', 'negative')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO featured_stories (slot, title, description, why_text, link_url, icon)
@@ -22,8 +14,8 @@ INSERT INTO battles ("order", category, left_title, left_desc, left_votes, right
 VALUES (1, 'Mobile', 'Affordable plans', 'Cheap but limited', 10, 'Premium plans', 'Expensive but reliable', 5)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO experiences (topic, verdict, categories, body, author_name, author_initials, user_id, love_count, reply_count)
-VALUES ('Phone battery life', 'Mixed', ARRAY['Technology'], 'Battery dies quickly after heavy use', 'Sita', 'S', 'user_123', 3, 0)
+INSERT INTO reviews (category, topic, topic_slug, title, summary, verdict, upvotes, downvotes, author_name, user_id)
+VALUES ('Technology', 'Phone battery life', 'phone-battery-life', 'Phone battery life', 'Battery dies quickly after heavy use', 'Thikai chha', 3, 0, 'Sita', 'user_123')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO site_stats ("order", label, value)

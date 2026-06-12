@@ -22,7 +22,10 @@ async function getCommunityContext(query) {
   if (!query) return "";
   try {
     const supabase = createServerSupabase();
-    const like = `%${query}%`;
+    // Bound the search term and strip LIKE wildcards so user input can't turn
+    // into a match-everything pattern or bloat the query.
+    const term = query.slice(0, 200).replace(/[%_]/g, " ").trim();
+    const like = `%${term}%`;
     const [trendingRes, reviewsRes] = await Promise.all([
       supabase
         .from("trending_topics")
@@ -69,7 +72,7 @@ function normalizeMessages(raw) {
   const cleaned = raw
     .map((m) => ({
       role: m?.role === "assistant" ? "assistant" : "user",
-      content: (m?.content || "").toString().trim()
+      content: (m?.content || "").toString().trim().slice(0, 4000)
     }))
     .filter((m) => m.content)
     .slice(-20);

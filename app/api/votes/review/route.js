@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 import { createServerSupabase } from "../../../../lib/supabase/server";
+import { recordVote } from "../../../../lib/votes";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(request) {
   const { userId } = await auth();
@@ -13,12 +16,26 @@ export async function POST(request) {
   const id = (payload.id || "").toString();
   const direction = payload.direction === "up" ? "up" : payload.direction === "down" ? "down" : "";
 
-  if (!id || !direction) {
+  if (!UUID_RE.test(id) || !direction) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
   try {
     const supabase = createServerSupabase();
+
+    const vote = await recordVote(supabase, {
+      userId,
+      targetType: "review",
+      targetId: id,
+      value: direction
+    });
+    if (!vote.ok) {
+      return NextResponse.json(
+        { error: "You already voted on this experience." },
+        { status: 409 }
+      );
+    }
+
     const { data: current, error } = await supabase
       .from("reviews")
       .select("upvotes, downvotes")
@@ -45,6 +62,7 @@ export async function POST(request) {
 
     return NextResponse.json({ review: updated });
   } catch (error) {
+    console.error("POST /api/votes/review failed:", error?.message || error);
     return NextResponse.json({ error: "Failed to update review." }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 import { createServerSupabase } from "../../../lib/supabase/server";
+import { LIMITS, lengthError } from "../../../lib/validate";
 
 export async function POST(request) {
   const { userId } = await auth();
@@ -15,6 +16,14 @@ export async function POST(request) {
 
   if (!question) {
     return NextResponse.json({ error: "Question is required." }, { status: 400 });
+  }
+
+  const lenError = lengthError({
+    Question: { value: question, max: LIMITS.question },
+    Category: { value: category, max: LIMITS.category }
+  });
+  if (lenError) {
+    return NextResponse.json({ error: lenError }, { status: 400 });
   }
 
   try {

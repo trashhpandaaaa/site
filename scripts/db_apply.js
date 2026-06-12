@@ -6,17 +6,6 @@ try {
 const { createClient } = require('@supabase/supabase-js');
 
 const seedData = {
-  snapshots: [
-    {
-      id: '11111111-1111-4111-8111-111111111111',
-      order: 1,
-      kicker: 'DAILY',
-      title: 'Daily Snapshot',
-      subtitle: 'Quick local signals',
-      meta_primary: 'Signal A',
-      meta_secondary: 'Signal B',
-    },
-  ],
   trending_topics: [
     {
       id: '22222222-2222-4222-8222-222222222222',
@@ -31,18 +20,6 @@ const seedData = {
       votes_no: 2,
       likes: 50,
       comments: 8,
-    },
-  ],
-  popular_topics: [
-    {
-      id: '33333333-3333-4333-8333-333333333333',
-      rank: 1,
-      category: 'Finance',
-      title: 'Banks increasing fees',
-      likes: 150,
-      comments: 34,
-      sentiment_label: 'Mostly negative',
-      sentiment_tone: 'negative',
     },
   ],
   featured_stories: [
@@ -69,18 +46,19 @@ const seedData = {
       right_votes: 5,
     },
   ],
-  experiences: [
+  reviews: [
     {
       id: '66666666-6666-4666-8666-666666666666',
+      category: 'Technology',
       topic: 'Phone battery life',
-      verdict: 'Mixed',
-      categories: ['Technology'],
-      body: 'Battery dies quickly after heavy use',
+      topic_slug: 'phone-battery-life',
+      title: 'Phone battery life',
+      summary: 'Battery dies quickly after heavy use',
+      verdict: 'Thikai chha',
+      upvotes: 3,
+      downvotes: 0,
       author_name: 'Sita',
-      author_initials: 'S',
       user_id: 'user_123',
-      love_count: 3,
-      reply_count: 0,
     },
   ],
   site_stats: [

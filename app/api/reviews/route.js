@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { createServerSupabase } from "../../../lib/supabase/server";
 import { getClerkUser, getPreferredUserName } from "../../../lib/auth/clerk";
 import { topicSlug } from "../../../lib/slug";
+import { LIMITS, lengthError } from "../../../lib/validate";
 
 // Detects the "column does not exist" error so we can keep working against a
 // database that has not had the topic_slug migration applied yet.
@@ -30,6 +31,16 @@ export async function POST(request) {
 
   if (!title || !summary || !category) {
     return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+  }
+
+  const lenError = lengthError({
+    Topic: { value: title, max: LIMITS.title },
+    Category: { value: category, max: LIMITS.category },
+    Verdict: { value: verdict, max: LIMITS.verdict },
+    Experience: { value: summary, max: LIMITS.summary }
+  });
+  if (lenError) {
+    return NextResponse.json({ error: lenError }, { status: 400 });
   }
 
   const slug = topicSlug(title);

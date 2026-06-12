@@ -1,16 +1,5 @@
 create extension if not exists "pgcrypto";
 
-create table if not exists snapshots (
-  id uuid primary key default gen_random_uuid(),
-  "order" int not null default 0,
-  kicker text not null,
-  title text not null,
-  subtitle text,
-  meta_primary text,
-  meta_secondary text,
-  updated_at timestamptz not null default now()
-);
-
 create table if not exists trending_topics (
   id uuid primary key default gen_random_uuid(),
   rank int not null default 0,
@@ -28,18 +17,6 @@ create table if not exists trending_topics (
   comments int not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
-);
-
-create table if not exists popular_topics (
-  id uuid primary key default gen_random_uuid(),
-  rank int not null default 0,
-  category text not null,
-  title text not null,
-  likes int not null default 0,
-  comments int not null default 0,
-  sentiment_label text,
-  sentiment_tone text,
-  created_at timestamptz not null default now()
 );
 
 create table if not exists featured_stories (
@@ -63,20 +40,6 @@ create table if not exists battles (
   right_title text not null,
   right_desc text,
   right_votes int not null default 0,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists experiences (
-  id uuid primary key default gen_random_uuid(),
-  topic text not null,
-  verdict text not null,
-  categories text[] default '{}',
-  body text not null,
-  author_name text not null,
-  author_initials text not null,
-  user_id text,
-  love_count int not null default 0,
-  reply_count int not null default 0,
   created_at timestamptz not null default now()
 );
 
@@ -122,12 +85,23 @@ create table if not exists site_stats (
   value text not null
 );
 
-create index if not exists idx_snapshots_order on snapshots("order");
+-- One row per (user, thing voted on). The unique constraint is what prevents
+-- a signed-in user from stuffing the counters by replaying vote requests.
+create table if not exists user_votes (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  target_type text not null,
+  target_id uuid not null,
+  value text not null,
+  created_at timestamptz not null default now(),
+  unique (user_id, target_type, target_id)
+);
+
+create index if not exists idx_user_votes_target on user_votes(target_type, target_id);
+
 create index if not exists idx_trending_rank on trending_topics(rank);
-create index if not exists idx_popular_rank on popular_topics(rank);
 create index if not exists idx_featured_slot on featured_stories(slot);
 create index if not exists idx_battles_order on battles("order");
-create index if not exists idx_experiences_created on experiences(created_at desc);
 create index if not exists idx_reviews_created on reviews(created_at desc);
 create index if not exists idx_reviews_topic_slug on reviews(topic_slug);
 

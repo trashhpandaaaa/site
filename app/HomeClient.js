@@ -3,7 +3,10 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-import NavAuth from "./components/NavAuth";
+import SiteNav from "./components/SiteNav";
+import ExperienceWall from "./components/ExperienceWall";
+import useScrollReveal from "./components/useScrollReveal";
+import { castBattleVote, castTrendingVote } from "./components/voteActions";
 import {
   IconBook,
   IconBriefcase,
@@ -13,6 +16,14 @@ import {
   IconPen,
   IconQuestion
 } from "./components/icons";
+
+// Maps the modal's verdict keys onto the canonical labels the reviews/Experience
+// feed groups and colours by.
+const VERDICT_LABELS = {
+  ramro: "Ramro chha",
+  thikai: "Thikai chha",
+  naramro: "Naramro chha"
+};
 
 function formatTimeAgo(value) {
   if (!value) return "";
@@ -24,14 +35,6 @@ function formatTimeAgo(value) {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
-}
-
-function verdictClass(verdict) {
-  if (!verdict) return "verd-ok";
-  const value = verdict.toLowerCase();
-  if (value.includes("ramro")) return "verd-good";
-  if (value.includes("naramro")) return "verd-bad";
-  return "verd-ok";
 }
 
 function delayClass(index) {
@@ -49,26 +52,21 @@ function FeaturedIcon({ type }) {
 }
 
 export default function HomeClient({
-  snapshots = [],
   trending = [],
-  popular = [],
   featured = [],
   battles = [],
-  experiences = [],
+  reviews = [],
   stats = []
 }) {
   const verdictRef = useRef(null);
   const activeTabRef = useRef("share");
   const votedRef = useRef({});
   const battleVotedRef = useRef({});
-  const loveRef = useRef({});
   const router = useRouter();
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      document.querySelectorAll(".fi").forEach((el) => el.classList.add("show"));
-    }, 80);
+  useScrollReveal();
 
+  useEffect(() => {
     const handleKey = (event) => {
       if (event.key !== "Escape") return;
       const bg = document.getElementById("modal-bg");
@@ -80,7 +78,6 @@ export default function HomeClient({
     document.addEventListener("keydown", handleKey);
 
     return () => {
-      window.clearTimeout(timer);
       document.removeEventListener("keydown", handleKey);
     };
   }, []);
@@ -110,202 +107,8 @@ export default function HomeClient({
     }
   };
 
-  const castVote = async (id, side) => {
-    if (votedRef.current[id]) return;
-    votedRef.current[id] = side;
-
-    const yesEl = document.getElementById(`tr-${id}-y`);
-    const noEl = document.getElementById(`tr-${id}-n`);
-    const yes = Number(yesEl?.dataset.count || yesEl?.textContent || 0);
-    const no = Number(noEl?.dataset.count || noEl?.textContent || 0);
-
-    const nextYes = yes + (side === "yes" ? 1 : 0);
-    const nextNo = no + (side === "no" ? 1 : 0);
-
-    if (yesEl) {
-      yesEl.textContent = nextYes.toLocaleString("en-US");
-      yesEl.dataset.count = String(nextYes);
-    }
-    if (noEl) {
-      noEl.textContent = nextNo.toLocaleString("en-US");
-      noEl.dataset.count = String(nextNo);
-    }
-
-    const pct = Math.round((nextYes / (nextYes + nextNo)) * 100);
-    const bar = document.getElementById(`tr-${id}-bar`);
-    if (bar) bar.style.width = `${pct}%`;
-
-    const card = document.getElementById(`tr-${id}`);
-    if (card) {
-      const yesBtn = card.querySelector(".vbtn.yes");
-      const noBtn = card.querySelector(".vbtn.no");
-      if (yesBtn) yesBtn.classList.toggle("voted", side === "yes");
-      if (noBtn) noBtn.classList.toggle("voted", side === "no");
-      const totalEl = card.querySelector(".vote-total");
-      if (totalEl) {
-        totalEl.textContent = `${(nextYes + nextNo).toLocaleString("en-US")} total votes`;
-      }
-    }
-
-    try {
-      const response = await fetch("/api/votes/trending", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id, side })
-      });
-
-      if (response.status === 401) {
-        window.location.href = "/sign-in";
-        return;
-      }
-
-      if (!response.ok) return;
-
-      const payload = await response.json();
-      if (!payload?.topic) return;
-
-      const updatedYes = payload.topic.votes_yes || 0;
-      const updatedNo = payload.topic.votes_no || 0;
-      if (yesEl) {
-        yesEl.textContent = updatedYes.toLocaleString("en-US");
-        yesEl.dataset.count = String(updatedYes);
-      }
-      if (noEl) {
-        noEl.textContent = updatedNo.toLocaleString("en-US");
-        noEl.dataset.count = String(updatedNo);
-      }
-      const updatedPct = Math.round((updatedYes / (updatedYes + updatedNo)) * 100);
-      if (bar) bar.style.width = `${updatedPct}%`;
-      if (card) {
-        const totalEl = card.querySelector(".vote-total");
-        if (totalEl) {
-          totalEl.textContent = `${(updatedYes + updatedNo).toLocaleString("en-US")} total votes`;
-        }
-      }
-    } catch (error) {
-      // Ignore network errors.
-    }
-  };
-
-  const castBattle = async (id, side) => {
-    if (battleVotedRef.current[id]) return;
-    battleVotedRef.current[id] = side;
-
-    const leftEl = document.getElementById(`b-${id}-av`);
-    const rightEl = document.getElementById(`b-${id}-bv`);
-    const left = Number(leftEl?.dataset.count || leftEl?.textContent || 0);
-    const right = Number(rightEl?.dataset.count || rightEl?.textContent || 0);
-
-    const nextLeft = left + (side === "a" ? 1 : 0);
-    const nextRight = right + (side === "b" ? 1 : 0);
-    const total = nextLeft + nextRight;
-    const leftPct = Math.round((nextLeft / total) * 100);
-    const rightPct = 100 - leftPct;
-
-    if (leftEl) {
-      leftEl.textContent = `${nextLeft.toLocaleString("en-US")} votes`;
-      leftEl.dataset.count = String(nextLeft);
-    }
-    if (rightEl) {
-      rightEl.textContent = `${nextRight.toLocaleString("en-US")} votes`;
-      rightEl.dataset.count = String(nextRight);
-    }
-
-    const leftFill = document.getElementById(`b-${id}-fa`);
-    const rightFill = document.getElementById(`b-${id}-fb`);
-    if (leftFill) leftFill.style.width = `${leftPct}%`;
-    if (rightFill) rightFill.style.width = `${rightPct}%`;
-    const leftPctEl = document.getElementById(`b-${id}-apct`);
-    const rightPctEl = document.getElementById(`b-${id}-bpct`);
-    if (leftPctEl) leftPctEl.textContent = `${leftPct}%`;
-    if (rightPctEl) rightPctEl.textContent = `${rightPct}%`;
-    const totalEl = document.getElementById(`b-${id}-tot`);
-    if (totalEl) totalEl.textContent = `${total.toLocaleString("en-US")} total votes`;
-
-    try {
-      const response = await fetch("/api/votes/battle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id, side })
-      });
-
-      if (response.status === 401) {
-        window.location.href = "/sign-in";
-        return;
-      }
-
-      if (!response.ok) return;
-
-      const payload = await response.json();
-      if (!payload?.battle) return;
-      const updatedLeft = payload.battle.left_votes || 0;
-      const updatedRight = payload.battle.right_votes || 0;
-      const updatedTotal = updatedLeft + updatedRight;
-      const updatedLeftPct = updatedTotal
-        ? Math.round((updatedLeft / updatedTotal) * 100)
-        : 0;
-      const updatedRightPct = 100 - updatedLeftPct;
-
-      if (leftEl) {
-        leftEl.textContent = `${updatedLeft.toLocaleString("en-US")} votes`;
-        leftEl.dataset.count = String(updatedLeft);
-      }
-      if (rightEl) {
-        rightEl.textContent = `${updatedRight.toLocaleString("en-US")} votes`;
-        rightEl.dataset.count = String(updatedRight);
-      }
-      if (leftFill) leftFill.style.width = `${updatedLeftPct}%`;
-      if (rightFill) rightFill.style.width = `${updatedRightPct}%`;
-      if (leftPctEl) leftPctEl.textContent = `${updatedLeftPct}%`;
-      if (rightPctEl) rightPctEl.textContent = `${updatedRightPct}%`;
-      if (totalEl) {
-        totalEl.textContent = `${updatedTotal.toLocaleString("en-US")} total votes`;
-      }
-    } catch (error) {
-      // Ignore network errors.
-    }
-  };
-
-  const castLove = async (id) => {
-    if (loveRef.current[id]) return;
-    loveRef.current[id] = true;
-
-    const loveEl = document.getElementById(`exp-${id}-love`);
-    const current = Number(loveEl?.dataset.count || loveEl?.textContent || 0);
-    const next = current + 1;
-    if (loveEl) {
-      loveEl.textContent = next.toLocaleString("en-US");
-      loveEl.dataset.count = String(next);
-    }
-
-    try {
-      const response = await fetch("/api/votes/experience-love", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ id })
-      });
-
-      if (response.status === 401) {
-        window.location.href = "/sign-in";
-        return;
-      }
-
-      if (!response.ok) return;
-
-      const payload = await response.json();
-      if (!payload?.experience) return;
-      const updatedLove = payload.experience.love_count || 0;
-      if (loveEl) {
-        loveEl.textContent = updatedLove.toLocaleString("en-US");
-        loveEl.dataset.count = String(updatedLove);
-      }
-    } catch (error) {
-      // Ignore network errors.
-    }
-  };
+  const castVote = (id, side) => castTrendingVote(votedRef, id, side);
+  const castBattle = (id, side) => castBattleVote(battleVotedRef, id, side);
 
   const openModal = (tab) => {
     const bg = document.getElementById("modal-bg");
@@ -393,23 +196,30 @@ export default function HomeClient({
     const tabs = document.querySelector(".modal-tabs");
 
     if (type === "share") {
-      const topic = document.getElementById("sh-topic")?.value.trim() || "";
-      const body = document.getElementById("sh-exp")?.value.trim() || "";
-      const verdict = verdictRef.current || "";
+      const title = document.getElementById("sh-topic")?.value.trim() || "";
+      const summary = document.getElementById("sh-exp")?.value.trim() || "";
+      const verdictKey = verdictRef.current || "";
       const categories = Array.from(document.querySelectorAll(".tpill.on")).map((el) =>
         el.textContent.trim()
       );
 
-      if (!topic || !body || !verdict) {
+      if (!title || !summary || !verdictKey) {
         window.alert("Please fill topic, verdict, and experience before submitting.");
         return;
       }
 
-      const response = await fetch("/api/experiences", {
+      // Post into the same reviews pool the homepage wall and Experience page
+      // read from, so a shared story shows up alongside everyone else's.
+      const response = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ topic, verdict, categories, body })
+        body: JSON.stringify({
+          title,
+          category: categories[0] || "General",
+          verdict: VERDICT_LABELS[verdictKey] || "",
+          summary
+        })
       });
 
       if (response.status === 401) {
@@ -479,19 +289,14 @@ export default function HomeClient({
     switchMTab(activeTabRef.current);
   };
 
-  const popularTitles = popular
-    .map((topic) => topic.title)
-    .filter((title) => Boolean(title));
-  const trendingTitles = trending
-    .map((topic) => topic.title)
-    .filter((title) => Boolean(title));
-  const uniqueTitles = Array.from(new Set([...popularTitles, ...trendingTitles]));
+  const uniqueTitles = Array.from(
+    new Set(trending.map((topic) => topic.title).filter((title) => Boolean(title)))
+  );
   const chipItems = uniqueTitles.slice(0, 6);
   const searchItems = uniqueTitles.slice(0, 5);
   const suggestedQuestions = uniqueTitles.slice(0, 4);
 
-  const marqueeSource = trending.length ? trending : popular;
-  const marqueeItems = marqueeSource
+  const marqueeItems = trending
     .slice(0, 6)
     .map((topic) => {
       if (!topic?.title) return null;
@@ -509,28 +314,7 @@ export default function HomeClient({
 
   return (
     <>
-      <nav id="mainnav">
-        <a href="#hero" className="logo">
-          Kasto<em>Chha</em>
-        </a>
-        <div className="nav-links">
-          <a href="/trending" className="nav-link">Trending</a>
-          <a href="#snapshot" className="nav-link">Snapshot</a>
-          <a href="/popular" className="nav-link">Popular</a>
-          <a href="/featured" className="nav-link">Featured</a>
-          <a href="/battle" className="nav-link">Battle</a>
-          <a href="/experience" className="nav-link">Experience</a>
-        </div>
-        <div className="nav-actions">
-          <button type="button" className="btn-outline" onClick={() => openModal("ask")}>
-            Ask community
-          </button>
-          <button type="button" className="btn-red" onClick={() => openModal("share")}>
-            Share a story
-          </button>
-          <NavAuth />
-        </div>
-      </nav>
+      <SiteNav onAsk={() => openModal("ask")} onShare={() => openModal("share")} />
 
       {marqueeLoop.length > 0 ? (
         <div className="marquee">
@@ -597,43 +381,6 @@ export default function HomeClient({
             </ul>
           </div>
         ) : null}
-      </section>
-
-      <section className="section section-alt" id="snapshot">
-        <div className="container">
-          <div className="sec-head">
-            <div className="sec-head-left">
-              <div className="sec-eyebrow">
-                <span className="sec-tag">DAILY</span>
-                <div className="sec-rule"></div>
-              </div>
-              <h2 className="sec-title">Daily <em>Snapshot</em></h2>
-              <p className="sec-sub">Quick local signals, updated through the day</p>
-            </div>
-            <a href="#" className="sec-all">All widgets -&gt;</a>
-          </div>
-
-          <div className="snap-grid">
-            {snapshots.length === 0 ? (
-              <div className="snap-card empty-card">
-                <div className="snap-title">No snapshot data yet</div>
-                <p className="snap-sub">Add daily snapshot rows in Supabase to populate this section.</p>
-              </div>
-            ) : (
-              snapshots.map((item, index) => (
-                <div className={`snap-card ${delayClass(index)}`} key={item.id}>
-                  <div className="snap-kicker">{item.kicker}</div>
-                  <div className="snap-title">{item.title}</div>
-                  <p className="snap-sub">{item.subtitle}</p>
-                  <div className="snap-meta">
-                    {item.meta_primary ? <span className="snap-pill">{item.meta_primary}</span> : null}
-                    {item.meta_secondary ? <span className="snap-pill">{item.meta_secondary}</span> : null}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
       </section>
 
       <section className="section" id="trending">
@@ -710,58 +457,7 @@ export default function HomeClient({
         </div>
       </section>
 
-      <section className="section section-alt" id="popular">
-        <div className="container">
-          <div className="sec-head">
-            <div className="sec-head-left">
-              <div className="sec-eyebrow">
-                <span className="sec-tag">ALL TIME</span>
-                <div className="sec-rule"></div>
-              </div>
-              <h2 className="sec-title">Popular <em>KastoChha</em></h2>
-              <p className="sec-sub">Topics that keep pulling comments year after year</p>
-            </div>
-            <a href="/popular" className="sec-all">View all -&gt;</a>
-          </div>
-
-          <div className="pop-grid bento-grid">
-            {popular.length === 0 ? (
-              <div className="pop-card bento-card empty-card">
-                <div className="pop-title">No popular topics yet</div>
-                <div className="pop-stats">
-                  <span className="pop-stat">Add data in Supabase to populate this section.</span>
-                </div>
-              </div>
-            ) : (
-              popular.map((topic, index) => (
-                <div className={`pop-card bento-card ${delayClass(index)}`} key={topic.id}>
-                  <div className={`pop-rank ${topic.rank <= 3 ? "hot" : ""}`}>
-                    {String(topic.rank || index + 1).padStart(2, "0")}
-                  </div>
-                  <div className="pop-body">
-                    <div className="pop-cat">{topic.category}</div>
-                    <div className="pop-title">{topic.title}</div>
-                    <div className="pop-stats">
-                      <span className="pop-stat">{(topic.likes || 0).toLocaleString("en-US")} likes</span>
-                      <span className="pop-stat">{(topic.comments || 0).toLocaleString("en-US")} comments</span>
-                      {topic.sentiment_label ? (
-                        <span
-                          className="pop-stat"
-                          style={{ color: `var(--${topic.sentiment_tone || "muted2"})` }}
-                        >
-                          {topic.sentiment_label}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="section" id="featured">
+      <section className="section section-alt" id="featured">
         <div className="container">
           <div className="sec-head">
             <div className="sec-head-left">
@@ -821,7 +517,7 @@ export default function HomeClient({
         </div>
       </section>
 
-      <section className="section section-alt" id="battle">
+      <section className="section" id="battle">
         <div className="container">
           <div className="sec-head">
             <div className="sec-head-left">
@@ -921,36 +617,12 @@ export default function HomeClient({
             <div className="wall-panel bento-card">
               <div className="wall-header">
                 <div className="wall-title">KastoChha Wall</div>
-                <div className="wall-sub">Latest experiences, no polishing</div>
+                <div className="wall-sub">Real experiences, grouped by topic</div>
               </div>
-              <div className="wall-feed bento-grid">
-                {experiences.length === 0 ? (
-                  <div className="wcard bento-card empty-card">
-                    <div className="wc-text">No experiences yet. Share the first one.</div>
-                  </div>
-                ) : (
-                  experiences.map((experience, index) => (
-                    <div className={`wcard bento-card ${delayClass(index)}`} key={experience.id}>
-                      <div className="wcard-top">
-                        <div className="av av1">{experience.author_initials}</div>
-                        <div className="wc-info">
-                          <div className="wc-name">{experience.author_name}</div>
-                          <div className="wc-topic">{experience.topic}</div>
-                        </div>
-                        <div className={`wc-verdict ${verdictClass(experience.verdict)}`}>{experience.verdict}</div>
-                      </div>
-                      <div className="wc-text">{experience.body}</div>
-                      <div className="wc-foot">
-                        <button type="button" className="wc-btn" onClick={() => castLove(experience.id)}>
-                          Love <span id={`exp-${experience.id}-love`} data-count={experience.love_count || 0}>{experience.love_count || 0}</span>
-                        </button>
-                        <button type="button" className="wc-btn">Reply</button>
-                        <span className="wc-time">{formatTimeAgo(experience.created_at)}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+              <ExperienceWall reviews={reviews} topicLimit={5} />
+              <a href="/experience" className="sec-all" style={{ marginTop: 16, display: "inline-block" }}>
+                See all experiences -&gt;
+              </a>
             </div>
 
             <div className="create-panel bento-card">
@@ -1003,7 +675,6 @@ export default function HomeClient({
               <h5>Explore</h5>
               <ul>
                 <li><a href="/trending">Trending</a></li>
-                <li><a href="/popular">Popular</a></li>
                 <li><a href="/featured">Featured</a></li>
                 <li><a href="/battle">Battle</a></li>
                 <li><a href="/experience">Experience</a></li>

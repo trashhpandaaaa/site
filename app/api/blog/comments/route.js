@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { createServerSupabase } from "../../../../lib/supabase/server";
 import { getClerkUser, getPreferredUserName } from "../../../../lib/auth/clerk";
+import { LIMITS, lengthError } from "../../../../lib/validate";
 
 export async function POST(request) {
   const { userId } = await auth();
@@ -16,6 +17,11 @@ export async function POST(request) {
 
   if (!postId || !body) {
     return NextResponse.json({ error: "Missing fields." }, { status: 400 });
+  }
+
+  const lenError = lengthError({ Comment: { value: body, max: LIMITS.comment } });
+  if (lenError) {
+    return NextResponse.json({ error: lenError }, { status: 400 });
   }
 
   const supabase = createServerSupabase();
