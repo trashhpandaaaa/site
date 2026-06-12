@@ -701,6 +701,7 @@ export default function HomeClient({
               </ul>
             </div>
           </div>
+          <div className="foot-mark" aria-hidden="true">KastoChha</div>
           <div className="foot-bottom">
             <span>Copyright 2025 KastoChha. Nepal ko real talk.</span>
             <span>Made with love in Kathmandu</span>
