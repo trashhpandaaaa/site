@@ -14,3 +14,5 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 }
+
+// To Do function to generate sitemap.xml for better SEO and indexing by search engines.

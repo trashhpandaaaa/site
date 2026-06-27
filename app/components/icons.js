@@ -94,3 +94,96 @@ export function IconArrowDown({ className = "" }) {
     </svg>
   );
 }
+
+export function IconReply({ className = "" }) {
+  return (
+    <svg {...baseProps} className={className}>
+      <path d="M9 17H7a4 4 0 0 1-4-4 4 4 0 0 1 4-4h11" />
+      <path d="m15 5 4 4-4 4" />
+    </svg>
+  );
+}
+
+export function IconThumb({ className = "" }) {
+  return (
+    <svg {...baseProps} className={className}>
+      <path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z" />
+      <path d="M7 11l4.2-7.3a1.5 1.5 0 0 1 2.8.7V8h4.6a2 2 0 0 1 2 2.3l-1.1 7A2 2 0 0 1 19.5 19H7" />
+    </svg>
+  );
+}
+
+export function IconThumbDown({ className = "" }) {
+  return (
+    <svg {...baseProps} className={className}>
+      <g transform="rotate(180 12 12)">
+        <path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z" />
+        <path d="M7 11l4.2-7.3a1.5 1.5 0 0 1 2.8.7V8h4.6a2 2 0 0 1 2 2.3l-1.1 7A2 2 0 0 1 19.5 19H7" />
+      </g>
+    </svg>
+  );
+}
+
+export function IconMeh({ className = "" }) {
+  return (
+    <svg {...baseProps} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8.5 15h7" />
+      <path d="M9 9.5h.01" />
+      <path d="M15 9.5h.01" />
+    </svg>
+  );
+}
+
+export function IconLink({ className = "" }) {
+  return (
+    <svg {...baseProps} className={className}>
+      <path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 1 0-7.07-7.07l-1.15 1.14" />
+      <path d="M14 11a5 5 0 0 0-7.07 0l-2 2a5 5 0 1 0 7.07 7.07l1.14-1.14" />
+    </svg>
+  );
+}
+
+// Brand/solid glyphs render with a fill rather than the shared stroke props.
+function brandProps(className) {
+  return {
+    xmlns: "http://www.w3.org/2000/svg",
+    viewBox: "0 0 24 24",
+    fill: "currentColor",
+    "aria-hidden": "true",
+    focusable: "false",
+    className
+  };
+}
+
+export function IconPlay({ className = "" }) {
+  return (
+    <svg {...brandProps(className)}>
+      <path d="M8 5.14v13.72a1 1 0 0 0 1.52.85l11-6.86a1 1 0 0 0 0-1.7l-11-6.86A1 1 0 0 0 8 5.14z" />
+    </svg>
+  );
+}
+
+export function IconFacebook({ className = "" }) {
+  return (
+    <svg {...brandProps(className)}>
+      <path d="M13.5 22v-8h2.7l.4-3.2h-3.1V8.7c0-.9.26-1.55 1.57-1.55H17V4.27A21 21 0 0 0 14.55 4C12.1 4 10.5 5.5 10.5 8.25v2.55H7.8V14h2.7v8z" />
+    </svg>
+  );
+}
+
+export function IconXLogo({ className = "" }) {
+  return (
+    <svg {...brandProps(className)}>
+      <path d="M17.53 3h2.97l-6.49 7.42L21.75 21h-5.97l-4.68-6.12L5.74 21H2.77l6.94-7.93L2.25 3h6.13l4.23 5.6zm-1.04 16.2h1.64L7.6 4.7H5.84z" />
+    </svg>
+  );
+}
+
+export function IconWhatsApp({ className = "" }) {
+  return (
+    <svg {...brandProps(className)}>
+      <path d="M12.04 2a9.9 9.9 0 0 0-8.49 14.95L2 22l5.2-1.5A9.9 9.9 0 1 0 12.04 2zm0 1.8a8.1 8.1 0 0 1 6.86 12.42c-.31.5-.43.96-.36 1.36l-3.31-.95-.43.25a8.1 8.1 0 1 1-2.76-15.78zm4.66 11.4c-.25-.13-1.48-.73-1.71-.81-.23-.09-.4-.13-.56.12-.17.25-.65.81-.79.97-.15.17-.29.19-.54.06-.25-.12-1.06-.39-2.02-1.24-.74-.66-1.25-1.48-1.39-1.73-.15-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.13-.15.17-.25.25-.41.08-.17.04-.31-.02-.44-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.42l-.48-.01c-.17 0-.44.06-.67.31s-.88.86-.88 2.1.9 2.43 1.03 2.6c.12.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.48-.6 1.69-1.19.21-.58.21-1.08.15-1.18-.06-.11-.23-.17-.48-.29z" />
+    </svg>
+  );
+}

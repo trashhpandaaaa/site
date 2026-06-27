@@ -1,4 +1,4 @@
-import { requireRole, ROLE } from "../../lib/auth/roles";
+import { requireRole, ROLE, hasRole } from "../../lib/auth/roles";
 
 export const metadata = {
   title: "Admin - KastoChha"
@@ -16,17 +16,48 @@ export default async function AdminHome() {
     );
   }
 
+  const isSuperAdmin = hasRole(authResult.role, ROLE.SUPER_ADMIN);
+
   return (
     <div className="admin-page">
-      <h1>Admin panel</h1>
+      <div className="admin-header">
+        <div>
+          <div className="page-kicker">ADMIN</div>
+          <h1>Admin panel</h1>
+          <p className="admin-sub">
+            Signed in as <strong>{isSuperAdmin ? "Super admin" : "Admin"}</strong>. Manage homepage content below.
+          </p>
+        </div>
+        <a className="btn-outline" href="/">View site</a>
+      </div>
+
       <div className="admin-grid">
+        <a className="admin-card" href="/admin/content/trending">
+          <h3>Trending topics</h3>
+          <p>Poll questions on the homepage Trending grid.</p>
+        </a>
+        <a className="admin-card" href="/admin/content/battles">
+          <h3>Battles</h3>
+          <p>Head-to-head split-screen votes.</p>
+        </a>
+        <a className="admin-card" href="/admin/content/featured">
+          <h3>Featured stories</h3>
+          <p>Editor-pick cards in the Featured section.</p>
+        </a>
+        <a className="admin-card" href="/admin/content/reels">
+          <h3>Reels</h3>
+          <p>Embedded video reels — link only, no storage.</p>
+        </a>
         <a className="admin-card" href="/admin/posts">
           <h3>Blog posts</h3>
           <p>Create, edit, and publish blog stories.</p>
         </a>
         <a className="admin-card" href="/admin/roles">
           <h3>User roles</h3>
-          <p>Promote users to admin roles.</p>
+          <p>
+            Promote users to admin roles.
+            {isSuperAdmin ? "" : " (Super admin needed to grant super admin.)"}
+          </p>
         </a>
       </div>
     </div>

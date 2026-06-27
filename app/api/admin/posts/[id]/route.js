@@ -3,6 +3,7 @@ import slugify from "slugify";
 
 import { createServerSupabase } from "../../../../../lib/supabase/server";
 import { requireRole, ROLE } from "../../../../../lib/auth/roles";
+import { sanitizeRichText } from "../../../../../lib/sanitize";
 
 function makeSlug(value) {
   return slugify(value, { lower: true, strict: true, trim: true });
@@ -66,7 +67,8 @@ export async function PATCH(request, { params }) {
   const payload = await request.json().catch(() => ({}));
   const title = (payload.title || "").toString().trim();
   const excerpt = (payload.excerpt || "").toString().trim();
-  const content = (payload.content || "").toString().trim();
+  // Quill emits HTML; strip anything executable before it's ever stored/served.
+  const content = sanitizeRichText((payload.content || "").toString()).trim();
   const status = (payload.status || "draft").toString();
   const coverImageUrl = (payload.coverImageUrl || "").toString().trim();
   const seoTitle = (payload.seoTitle || "").toString().trim();

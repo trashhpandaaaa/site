@@ -5,6 +5,8 @@ import { createServerSupabase } from "../../../lib/supabase/server";
 import { getClerkUser, getPreferredUserName } from "../../../lib/auth/clerk";
 import { topicSlug } from "../../../lib/slug";
 import { LIMITS, lengthError } from "../../../lib/validate";
+import { classifyReview } from "../../../lib/gemini";
+import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
 
 // Detects the "column does not exist" error so we can keep working against a
 // database that has not had the topic_slug migration applied yet.
@@ -21,6 +23,14 @@ export async function POST(request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rl = await checkRateLimit("write", userId);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "You're posting too fast. Please wait a moment." },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds(rl.reset)) } }
+    );
   }
 
   const payload = await request.json().catch(() => ({}));
@@ -43,7 +53,24 @@ export async function POST(request) {
     return NextResponse.json({ error: lenError }, { status: 400 });
   }
 
-  const slug = topicSlug(title);
+  // Auto-classify (best-effort, time-boxed) so experiences group under a clean,
+  // canonical topic and a normalized category — even if the author's wording
+  // varies. Falls back to the raw title/category if the AI is off or slow.
+  let topicLabel = title;
+  try {
+    const ai = await Promise.race([
+      classifyReview({ title, summary, category }),
+      new Promise((resolve) => setTimeout(() => resolve(null), 5000))
+    ]);
+    if (ai) {
+      if (ai.category) category = ai.category;
+      if (ai.topic) topicLabel = ai.topic;
+    }
+  } catch {
+    // Ignore — keep the author-provided values.
+  }
+
+  const slug = topicSlug(topicLabel);
 
   try {
     const user = await getClerkUser(userId);
@@ -51,10 +78,10 @@ export async function POST(request) {
 
     const supabase = createServerSupabase();
 
-    // If this topic already exists, adopt its canonical title + category so the
+    // If this topic already exists, adopt its canonical topic + category so the
     // new experience folds into the same thread instead of creating a near
     // duplicate ("iPhone 15" vs "iphone 15").
-    let canonicalTitle = title;
+    let canonicalTopic = topicLabel;
     if (slug) {
       const { data: existing } = await supabase
         .from("reviews")
@@ -65,15 +92,15 @@ export async function POST(request) {
         .maybeSingle();
 
       if (existing) {
-        canonicalTitle = existing.topic || existing.title || title;
+        canonicalTopic = existing.topic || existing.title || topicLabel;
         if (existing.category) category = existing.category;
       }
     }
 
     const baseRow = {
-      title: canonicalTitle,
+      title,
       summary,
-      topic: canonicalTitle,
+      topic: canonicalTopic,
       category,
       verdict: verdict || null,
       author_name: name,

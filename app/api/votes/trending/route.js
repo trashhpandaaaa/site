@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { createServerSupabase } from "../../../../lib/supabase/server";
 import { recordVote } from "../../../../lib/votes";
+import { checkRateLimit, retryAfterSeconds } from "../../../../lib/ratelimit";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -12,9 +13,17 @@ export async function POST(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const rl = await checkRateLimit("vote", userId);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many votes, please slow down." },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds(rl.reset)) } }
+    );
+  }
+
   const payload = await request.json().catch(() => ({}));
   const id = (payload.id || "").toString();
-  const side = payload.side === "yes" ? "yes" : payload.side === "no" ? "no" : "";
+  const side = ["yes", "mid", "no"].includes(payload.side) ? payload.side : "";
 
   if (!UUID_RE.test(id) || !side) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
@@ -30,37 +39,33 @@ export async function POST(request) {
       value: side
     });
     if (!vote.ok) {
+      if (vote.duplicate) {
+        return NextResponse.json(
+          { error: "You already voted on this topic." },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
-        { error: "You already voted on this topic." },
-        { status: 409 }
+        { error: "Could not record your vote. Please try again." },
+        { status: 500 }
       );
     }
 
-    const { data: current, error } = await supabase
-      .from("trending_topics")
-      .select("votes_yes, votes_no")
-      .eq("id", id)
-      .single();
-
-    if (error || !current) {
-      return NextResponse.json({ error: "Topic not found." }, { status: 404 });
-    }
-
-    const nextYes = (current.votes_yes || 0) + (side === "yes" ? 1 : 0);
-    const nextNo = (current.votes_no || 0) + (side === "no" ? 1 : 0);
-
-    const { data: updated, error: updateError } = await supabase
-      .from("trending_topics")
-      .update({ votes_yes: nextYes, votes_no: nextNo })
-      .eq("id", id)
-      .select()
-      .single();
+    // Atomic increment so concurrent votes can't clobber each other.
+    const { data: updated, error: updateError } = await supabase.rpc(
+      "increment_trending_vote",
+      { p_id: id, p_side: side }
+    );
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
+    const topic = Array.isArray(updated) ? updated[0] : updated;
+    if (!topic) {
+      return NextResponse.json({ error: "Topic not found." }, { status: 404 });
+    }
 
-    return NextResponse.json({ topic: updated });
+    return NextResponse.json({ topic });
   } catch (error) {
     console.error("POST /api/votes/trending failed:", error?.message || error);
     return NextResponse.json({ error: "Failed to update vote." }, { status: 500 });

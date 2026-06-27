@@ -1,14 +1,17 @@
 import "./globals.css";
 import "react-quill/dist/quill.snow.css";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Fraunces, DM_Sans, DM_Mono } from "next/font/google";
+import { Playfair_Display, DM_Sans, DM_Mono } from "next/font/google";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-const fraunces = Fraunces({
+// Editorial high-contrast serif used for the wordmark, headings, and italics
+// (matches the design mockups). Exposed as --font-serif so all existing CSS
+// keeps working unchanged.
+const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-serif",
-  weight: ["300", "700", "900"],
+  weight: ["400", "500", "600", "700", "800", "900"],
   style: ["normal", "italic"]
 });
 
@@ -47,7 +50,7 @@ export default function RootLayout({ children }) {
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={`${fraunces.variable} ${dmSans.variable} ${dmMono.variable}`}>
+        <body className={`${playfair.variable} ${dmSans.variable} ${dmMono.variable}`}>
           <a href="#main" className="sr-only focus:not-sr-only" style={{position:'absolute',left:8,top:8,zIndex:10000,background:'#fff',padding:'6px 8px',borderRadius:6}}>Skip to content</a>
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
             "@context": "https://schema.org",

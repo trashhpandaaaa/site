@@ -12,42 +12,59 @@ function fmt(n) {
   return n.toLocaleString("en-US");
 }
 
+// Three-way trending poll: side is "yes" (Thik Chha), "mid" (Thikai Chha) or
+// "no" (Thik Chhaina). Each card exposes #tr-<id>-y / -m / -n count nodes and a
+// #tr-<id>-meta line; the pill buttons carry .tpoll.yes/.mid/.no.
 export async function castTrendingVote(votedRef, id, side) {
   if (votedRef.current[id]) return;
   votedRef.current[id] = side;
 
   const yesEl = document.getElementById(`tr-${id}-y`);
+  const midEl = document.getElementById(`tr-${id}-m`);
   const noEl = document.getElementById(`tr-${id}-n`);
-  const bar = document.getElementById(`tr-${id}-bar`);
+  const meta = document.getElementById(`tr-${id}-meta`);
   const card = document.getElementById(`tr-${id}`);
-  const prevYes = Number(yesEl?.dataset.count || yesEl?.textContent || 0);
-  const prevNo = Number(noEl?.dataset.count || noEl?.textContent || 0);
+  const prev = {
+    yes: Number(yesEl?.dataset.count || yesEl?.textContent || 0),
+    mid: Number(midEl?.dataset.count || midEl?.textContent || 0),
+    no: Number(noEl?.dataset.count || noEl?.textContent || 0)
+  };
 
-  const render = (yes, no, votedSide) => {
-    if (yesEl) {
-      yesEl.textContent = fmt(yes);
-      yesEl.dataset.count = String(yes);
+  const render = (counts, votedSide) => {
+    const set = (el, n) => {
+      if (!el) return;
+      el.textContent = fmt(n);
+      el.dataset.count = String(n);
+    };
+    set(yesEl, counts.yes);
+    set(midEl, counts.mid);
+    set(noEl, counts.no);
+    const total = counts.yes + counts.mid + counts.no;
+    if (meta) {
+      const time = meta.dataset.time;
+      meta.textContent = `${fmt(total)} votes${time ? ` · ${time}` : ""}`;
     }
-    if (noEl) {
-      noEl.textContent = fmt(no);
-      noEl.dataset.count = String(no);
-    }
-    const total = yes + no;
-    if (bar) bar.style.width = `${total ? Math.round((yes / total) * 100) : 0}%`;
     if (card) {
-      card.querySelector(".vbtn.yes")?.classList.toggle("voted", votedSide === "yes");
-      card.querySelector(".vbtn.no")?.classList.toggle("voted", votedSide === "no");
-      const totalEl = card.querySelector(".vote-total");
-      if (totalEl) totalEl.textContent = `${fmt(total)} total votes`;
+      card.querySelector(".tpoll.yes")?.classList.toggle("voted", votedSide === "yes");
+      card.querySelector(".tpoll.mid")?.classList.toggle("voted", votedSide === "mid");
+      card.querySelector(".tpoll.no")?.classList.toggle("voted", votedSide === "no");
+      card.classList.toggle("is-voted", Boolean(votedSide));
     }
   };
 
   const revert = (unlock) => {
-    render(prevYes, prevNo, unlock ? null : side);
+    render(prev, unlock ? null : side);
     if (unlock) delete votedRef.current[id];
   };
 
-  render(prevYes + (side === "yes" ? 1 : 0), prevNo + (side === "no" ? 1 : 0), side);
+  render(
+    {
+      yes: prev.yes + (side === "yes" ? 1 : 0),
+      mid: prev.mid + (side === "mid" ? 1 : 0),
+      no: prev.no + (side === "no" ? 1 : 0)
+    },
+    side
+  );
 
   try {
     const response = await fetch("/api/votes/trending", {
@@ -69,7 +86,14 @@ export async function castTrendingVote(votedRef, id, side) {
 
     const payload = await response.json();
     if (!payload?.topic) return;
-    render(payload.topic.votes_yes || 0, payload.topic.votes_no || 0, side);
+    render(
+      {
+        yes: payload.topic.votes_yes || 0,
+        mid: payload.topic.votes_mid || 0,
+        no: payload.topic.votes_no || 0
+      },
+      side
+    );
   } catch {
     revert(true);
   }

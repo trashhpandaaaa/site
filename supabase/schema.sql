@@ -9,15 +9,21 @@ create table if not exists trending_topics (
   badge_label text,
   badge_tone text,
   trend_note text,
-  yes_label text default 'Ramro',
-  no_label text default 'Naramro',
+  yes_label text default 'Thik Chha',
+  mid_label text default 'Thikai Chha',
+  no_label text default 'Thik Chhaina',
   votes_yes int not null default 0,
+  votes_mid int not null default 0,
   votes_no int not null default 0,
   likes int not null default 0,
   comments int not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Backfill the neutral ("Thikai Chha") poll option for existing databases.
+alter table trending_topics add column if not exists votes_mid int not null default 0;
+alter table trending_topics add column if not exists mid_label text default 'Thikai Chha';
 
 create table if not exists featured_stories (
   id uuid primary key default gen_random_uuid(),
@@ -37,11 +43,36 @@ create table if not exists battles (
   left_title text not null,
   left_desc text,
   left_votes int not null default 0,
+  left_color text,
+  left_image text,
   right_title text not null,
   right_desc text,
   right_votes int not null default 0,
+  right_color text,
+  right_image text,
   created_at timestamptz not null default now()
 );
+
+-- Optional split-screen styling for existing databases (gradient colours or
+-- product photos per side); both fall back to brand colours when null.
+alter table battles add column if not exists left_color text;
+alter table battles add column if not exists left_image text;
+alter table battles add column if not exists right_color text;
+alter table battles add column if not exists right_image text;
+
+create table if not exists reels (
+  id uuid primary key default gen_random_uuid(),
+  "order" int not null default 0,
+  tag text not null,
+  title text not null,
+  handle text,
+  accent text,
+  video_url text,
+  channel_url text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_reels_order on reels("order");
 
 create table if not exists reviews (
   id uuid primary key default gen_random_uuid(),
@@ -189,3 +220,75 @@ create policy "public read published comments" on blog_comments
 create policy "authenticated insert comments" on blog_comments
   for insert
   with check (auth.role() = 'authenticated');
+
+-- Row Level Security for the rest of the schema. The app reads/writes everything
+-- through the server (service-role key, which bypasses RLS); this only blocks
+-- the public anon/publishable key from touching tables directly via PostgREST.
+-- See supabase/migrations/0002_rls.sql for the full rationale.
+
+-- Public display tables: anyone may read, nobody may write via the anon key.
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'trending_topics','battles','reels','featured_stories','site_stats',
+    'blog_tags','blog_categories','blog_post_tags','blog_post_categories'
+  ] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists "public read" on public.%I', t);
+    execute format('create policy "public read" on public.%I for select using (true)', t);
+  end loop;
+end $$;
+
+-- Tables with user identifiers / private signal: RLS on, no policy => the anon
+-- key gets no access at all; only the server (service role) can touch them.
+alter table public.reviews         enable row level security;
+alter table public.questions       enable row level security;
+alter table public.author_profiles enable row level security;
+alter table public.chat_queries    enable row level security;
+alter table public.user_votes      enable row level security;
+
+-- Atomic vote counters (see migration 0002 for details). Execute is granted only
+-- to the service role so the anon key cannot call them over /rest/v1/rpc.
+create or replace function public.increment_trending_vote(p_id uuid, p_side text)
+returns public.trending_topics
+language sql
+as $$
+  update public.trending_topics set
+    votes_yes  = votes_yes + (p_side = 'yes')::int,
+    votes_mid  = votes_mid + (p_side = 'mid')::int,
+    votes_no   = votes_no  + (p_side = 'no')::int,
+    updated_at = now()
+  where id = p_id
+  returning *;
+$$;
+
+create or replace function public.increment_battle_vote(p_id uuid, p_side text)
+returns public.battles
+language sql
+as $$
+  update public.battles set
+    left_votes  = left_votes  + (p_side = 'a')::int,
+    right_votes = right_votes + (p_side = 'b')::int
+  where id = p_id
+  returning *;
+$$;
+
+create or replace function public.increment_review_vote(p_id uuid, p_direction text)
+returns public.reviews
+language sql
+as $$
+  update public.reviews set
+    upvotes   = upvotes   + (p_direction = 'up')::int,
+    downvotes = downvotes + (p_direction = 'down')::int
+  where id = p_id
+  returning *;
+$$;
+
+revoke all on function public.increment_trending_vote(uuid, text) from public;
+revoke all on function public.increment_battle_vote(uuid, text)   from public;
+revoke all on function public.increment_review_vote(uuid, text)   from public;
+
+grant execute on function public.increment_trending_vote(uuid, text) to service_role;
+grant execute on function public.increment_battle_vote(uuid, text)   to service_role;
+grant execute on function public.increment_review_vote(uuid, text)   to service_role;

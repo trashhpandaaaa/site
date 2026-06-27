@@ -3,11 +3,20 @@ import { auth } from "@clerk/nextjs/server";
 
 import { createServerSupabase } from "../../../lib/supabase/server";
 import { LIMITS, lengthError } from "../../../lib/validate";
+import { checkRateLimit, retryAfterSeconds } from "../../../lib/ratelimit";
 
 export async function POST(request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rl = await checkRateLimit("write", userId);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "You're posting too fast. Please wait a moment." },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds(rl.reset)) } }
+    );
   }
 
   const payload = await request.json().catch(() => ({}));

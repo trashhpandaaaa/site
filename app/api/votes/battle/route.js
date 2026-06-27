@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 
 import { createServerSupabase } from "../../../../lib/supabase/server";
 import { recordVote } from "../../../../lib/votes";
+import { checkRateLimit, retryAfterSeconds } from "../../../../lib/ratelimit";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -10,6 +11,14 @@ export async function POST(request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rl = await checkRateLimit("vote", userId);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many votes, please slow down." },
+      { status: 429, headers: { "Retry-After": String(retryAfterSeconds(rl.reset)) } }
+    );
   }
 
   const payload = await request.json().catch(() => ({}));
@@ -30,37 +39,33 @@ export async function POST(request) {
       value: side
     });
     if (!vote.ok) {
+      if (vote.duplicate) {
+        return NextResponse.json(
+          { error: "You already voted on this battle." },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
-        { error: "You already voted on this battle." },
-        { status: 409 }
+        { error: "Could not record your vote. Please try again." },
+        { status: 500 }
       );
     }
 
-    const { data: current, error } = await supabase
-      .from("battles")
-      .select("left_votes, right_votes")
-      .eq("id", id)
-      .single();
-
-    if (error || !current) {
-      return NextResponse.json({ error: "Battle not found." }, { status: 404 });
-    }
-
-    const nextLeft = (current.left_votes || 0) + (side === "a" ? 1 : 0);
-    const nextRight = (current.right_votes || 0) + (side === "b" ? 1 : 0);
-
-    const { data: updated, error: updateError } = await supabase
-      .from("battles")
-      .update({ left_votes: nextLeft, right_votes: nextRight })
-      .eq("id", id)
-      .select()
-      .single();
+    // Atomic increment so concurrent votes can't clobber each other.
+    const { data: updated, error: updateError } = await supabase.rpc(
+      "increment_battle_vote",
+      { p_id: id, p_side: side }
+    );
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
+    const battle = Array.isArray(updated) ? updated[0] : updated;
+    if (!battle) {
+      return NextResponse.json({ error: "Battle not found." }, { status: 404 });
+    }
 
-    return NextResponse.json({ battle: updated });
+    return NextResponse.json({ battle });
   } catch (error) {
     console.error("POST /api/votes/battle failed:", error?.message || error);
     return NextResponse.json({ error: "Failed to update vote." }, { status: 500 });

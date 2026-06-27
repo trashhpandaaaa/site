@@ -4,17 +4,18 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import SiteNav from "./components/SiteNav";
-import ExperienceWall from "./components/ExperienceWall";
+import TrendingCards from "./components/TrendingCards";
+import BattleSplit from "./components/BattleSplit";
+import DiscussionsGrid from "./components/DiscussionsGrid";
+import ReelsRail from "./components/ReelsRail";
+import ShareRow from "./components/ShareRow";
 import useScrollReveal from "./components/useScrollReveal";
-import { castBattleVote, castTrendingVote } from "./components/voteActions";
 import {
   IconBook,
   IconBriefcase,
-  IconChat,
   IconCheck,
-  IconHome,
-  IconPen,
-  IconQuestion
+  IconChat,
+  IconHome
 } from "./components/icons";
 
 // Maps the modal's verdict keys onto the canonical labels the reviews/Experience
@@ -24,26 +25,6 @@ const VERDICT_LABELS = {
   thikai: "Thikai chha",
   naramro: "Naramro chha"
 };
-
-function formatTimeAgo(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  const diffMs = Date.now() - date.getTime();
-  const minutes = Math.max(1, Math.floor(diffMs / 60000));
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-function delayClass(index) {
-  if (index === 0) return "fi d1";
-  if (index === 1) return "fi d2";
-  if (index === 2) return "fi d3";
-  if (index === 3) return "fi d4";
-  return "fi";
-}
 
 function FeaturedIcon({ type }) {
   if (type === "home") return <IconHome className="icon" />;
@@ -56,12 +37,11 @@ export default function HomeClient({
   featured = [],
   battles = [],
   reviews = [],
-  stats = []
+  stats = [],
+  reels = []
 }) {
   const verdictRef = useRef(null);
   const activeTabRef = useRef("share");
-  const votedRef = useRef({});
-  const battleVotedRef = useRef({});
   const router = useRouter();
 
   useScrollReveal();
@@ -106,9 +86,6 @@ export default function HomeClient({
       el.classList.add("active");
     }
   };
-
-  const castVote = (id, side) => castTrendingVote(votedRef, id, side);
-  const castBattle = (id, side) => castBattleVote(battleVotedRef, id, side);
 
   const openModal = (tab) => {
     const bg = document.getElementById("modal-bg");
@@ -208,8 +185,8 @@ export default function HomeClient({
         return;
       }
 
-      // Post into the same reviews pool the homepage wall and Experience page
-      // read from, so a shared story shows up alongside everyone else's.
+      // Post into the same reviews pool the homepage discussions and Experience
+      // page read from, so a shared story shows up alongside everyone else's.
       const response = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -300,7 +277,7 @@ export default function HomeClient({
     .slice(0, 6)
     .map((topic) => {
       if (!topic?.title) return null;
-      const totalVotes = (topic.votes_yes || 0) + (topic.votes_no || 0);
+      const totalVotes = (topic.votes_yes || 0) + (topic.votes_mid || 0) + (topic.votes_no || 0);
       const activity = totalVotes
         ? `${totalVotes.toLocaleString("en-US")} votes`
         : `${(topic.likes || 0).toLocaleString("en-US")} likes`;
@@ -392,90 +369,109 @@ export default function HomeClient({
                 <div className="sec-rule"></div>
               </div>
               <h2 className="sec-title">Trending <em>KastoChha</em></h2>
-              <p className="sec-sub">What Nepal is talking about right now, with real takes</p>
+              <p className="sec-sub">Questions, Debates, and Decisions - What Nepal is talking about right now.</p>
             </div>
             <a href="/trending" className="sec-all">View all -&gt;</a>
           </div>
 
-          <div className="feed-list bento-grid">
-            {trending.length === 0 ? (
-              <div className="tr-card bento-card empty-card">
-                <div className="tr-title">No trending topics yet</div>
-                <div className="tr-desc">Add data in Supabase to populate this section.</div>
-              </div>
-            ) : (
-              trending.map((topic, index) => {
-                const totalVotes = (topic.votes_yes || 0) + (topic.votes_no || 0);
-                const yesPct = totalVotes
-                  ? Math.round(((topic.votes_yes || 0) / totalVotes) * 100)
-                  : 0;
-                const badgeTone = topic.badge_tone || "neutral";
-                const timeLabel = formatTimeAgo(topic.created_at);
-
-                return (
-                  <div className={`tr-card bento-card ${delayClass(index)}`} key={topic.id} id={`tr-${topic.id}`}>
-                    <div className="tr-rank">{String(topic.rank || index + 1).padStart(2, "0")}</div>
-                    <div className="tr-num">
-                      <span>{String(topic.rank || index + 1).padStart(2, "0")}</span>
-                      <span>{topic.category}</span>
-                      {topic.trend_note ? (
-                        <span className={topic.trend_note.includes("down") ? "growth down" : "growth"}>
-                          {topic.trend_note}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="tr-title">{topic.title}</div>
-                    <div className="tr-desc">{topic.description}</div>
-                    <div className="tr-footer">
-                      {topic.badge_label ? (
-                        <span className={`badge badge-${badgeTone}`}>{topic.badge_label}</span>
-                      ) : null}
-                      <span className="badge badge-neutral">{topic.category}</span>
-                      <div className="tr-meta">
-                        <span>{(topic.likes || 0).toLocaleString("en-US")} likes</span>
-                        <span>{(topic.comments || 0).toLocaleString("en-US")} comments</span>
-                        {timeLabel ? <span>{timeLabel}</span> : null}
-                      </div>
-                    </div>
-                    <div className="vote-row">
-                      <button type="button" className="vbtn yes" onClick={() => castVote(topic.id, "yes")}>
-                        {topic.yes_label || "Ramro"} <span className="vcnt" id={`tr-${topic.id}-y`} data-count={topic.votes_yes || 0}>{topic.votes_yes || 0}</span>
-                      </button>
-                      <button type="button" className="vbtn no" onClick={() => castVote(topic.id, "no")}>
-                        {topic.no_label || "Naramro"} <span className="vcnt" id={`tr-${topic.id}-n`} data-count={topic.votes_no || 0}>{topic.votes_no || 0}</span>
-                      </button>
-                      <span className="vote-total">{totalVotes.toLocaleString("en-US")} total votes</span>
-                    </div>
-                    <div className="vote-bar">
-                      <div className="vote-fill" id={`tr-${topic.id}-bar`} style={{ width: `${yesPct}%` }}></div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+          <TrendingCards topics={trending} />
         </div>
       </section>
 
-      <section className="section section-alt" id="featured">
+      <section className="section section-alt" id="battle">
         <div className="container">
           <div className="sec-head">
             <div className="sec-head-left">
               <div className="sec-eyebrow">
-                <span className="sec-tag">EDITOR PICK</span>
+                <span className="sec-tag">VOTE NOW</span>
                 <div className="sec-rule"></div>
               </div>
-              <h2 className="sec-title">Featured <em>KastoChha</em></h2>
-              <p className="sec-sub">Curated stories with long threads and real receipts</p>
+              <h2 className="sec-title">KastoChha <em>Battle</em></h2>
+              <p className="sec-sub">Vote and Decide - Make your decision from experiences.</p>
+            </div>
+            <a href="/battle" className="sec-all">All battles -&gt;</a>
+          </div>
+
+          <BattleSplit battles={battles} />
+        </div>
+      </section>
+
+      <section className="section section-deep" id="discussions">
+        <div className="container">
+          <div className="sec-head">
+            <div className="sec-head-left">
+              <div className="sec-eyebrow">
+                <span className="sec-tag">COMMUNITY</span>
+                <div className="sec-rule"></div>
+              </div>
+              <h2 className="sec-title">KastoChha <em>Discussions</em></h2>
+              <p className="sec-sub">Reviews and Opinions from people across Nepal.</p>
+            </div>
+            <a href="/experience" className="sec-all">All discussions -&gt;</a>
+          </div>
+
+          <DiscussionsGrid reviews={reviews} limit={6} />
+
+          <div className="join-band">
+            <div className="join-card ask" onClick={() => openModal("ask")}>
+              <span className="join-tag">Community Q and A</span>
+              <div className="join-heading">Ask the community</div>
+              <div className="join-desc">Kuch jannu chha? Sidha sodhnus. People share what actually happened.</div>
+              <span className="join-go">Ask now -&gt;</span>
+            </div>
+            <div className="join-card share" onClick={() => openModal("share")}>
+              <span className="join-tag">Real Experiences</span>
+              <div className="join-heading">Share your experience</div>
+              <div className="join-desc">Tapai ko experience share gare aru lai maddat huncha. Cost ra timeline mention gare ramro.</div>
+              <span className="join-go">Share now -&gt;</span>
             </div>
           </div>
 
-          {featured.length === 0 ? (
-            <div className="bento-card empty-card" style={{ padding: "24px" }}>
-              <div className="fc-title">No featured stories yet</div>
-              <div className="fc-desc">Add featured stories in Supabase to populate this section.</div>
+          {stats.length > 0 ? (
+            <div className="stat-strip">
+              {stats.map((stat) => (
+                <div className="stat-box" key={stat.id}>
+                  <span className="stat-val">{stat.value}</span>
+                  <div className="stat-lbl">{stat.label}</div>
+                </div>
+              ))}
             </div>
-          ) : (
+          ) : null}
+        </div>
+      </section>
+
+      <section className="section" id="reels">
+        <div className="container">
+          <div className="sec-head">
+            <div className="sec-head-left">
+              <div className="sec-eyebrow">
+                <span className="sec-tag">WATCH</span>
+                <div className="sec-rule"></div>
+              </div>
+              <h2 className="sec-title">KastoChha <em>Reels</em></h2>
+              <p className="sec-sub">Explore our reels across different niche channels and stay updated.</p>
+            </div>
+            <a href="https://www.youtube.com/results?search_query=kastochha" target="_blank" rel="noopener noreferrer" className="sec-all">Follow us -&gt;</a>
+          </div>
+
+          <ReelsRail reels={reels} />
+        </div>
+      </section>
+
+      {featured.length > 0 ? (
+        <section className="section section-alt" id="featured">
+          <div className="container">
+            <div className="sec-head">
+              <div className="sec-head-left">
+                <div className="sec-eyebrow">
+                  <span className="sec-tag">EDITOR PICK</span>
+                  <div className="sec-rule"></div>
+                </div>
+                <h2 className="sec-title">Featured <em>KastoChha</em></h2>
+                <p className="sec-sub">Curated stories with long threads and real receipts</p>
+              </div>
+            </div>
+
             <div className="feat-grid bento-grid fi">
               {featuredMain ? (
                 <div className="fc fc-main bento-card">
@@ -490,6 +486,7 @@ export default function HomeClient({
                     {featuredMain.link_url ? (
                       <a href={featuredMain.link_url} className="fc-read">Read full story -&gt;</a>
                     ) : null}
+                    <ShareRow text={featuredMain.title} url={`/featured/${featuredMain.id}`} label="Share" />
                   </div>
                 </div>
               ) : null}
@@ -509,160 +506,14 @@ export default function HomeClient({
                     {story.link_url ? (
                       <a href={story.link_url} className="fc-read">Read -&gt;</a>
                     ) : null}
+                    <ShareRow text={story.title} url={`/featured/${story.id}`} label="Share" />
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      </section>
-
-      <section className="section" id="battle">
-        <div className="container">
-          <div className="sec-head">
-            <div className="sec-head-left">
-              <div className="sec-eyebrow">
-                <span className="sec-tag">VOTE NOW</span>
-                <div className="sec-rule"></div>
-              </div>
-              <h2 className="sec-title">KastoChha <em>Battle</em></h2>
-              <p className="sec-sub">Vote and decide - Nepal le decide garcha, by experience</p>
-            </div>
-            <a href="/battle" className="sec-all">All battles -&gt;</a>
           </div>
-
-          <div className="battle-list bento-grid">
-            {battles.length === 0 ? (
-              <div className="battle-card bento-card empty-card" style={{ padding: "24px" }}>
-                <div className="bs-name">No battles yet</div>
-                <div className="bs-desc">Add battle rows in Supabase to start collecting votes.</div>
-              </div>
-            ) : (
-              battles.map((battle, index) => {
-                const totalVotes = (battle.left_votes || 0) + (battle.right_votes || 0);
-                const leftPct = totalVotes
-                  ? Math.round(((battle.left_votes || 0) / totalVotes) * 100)
-                  : 0;
-                const rightPct = 100 - leftPct;
-
-                return (
-                  <div className={`battle-card bento-card ${delayClass(index)}`} key={battle.id}>
-                    <div className="battle-inner">
-                      <div className="bside">
-                        <div className="bs-cat">{battle.category}</div>
-                        <div className="bs-name">{battle.left_title}</div>
-                        <div className="bs-desc">{battle.left_desc}</div>
-                        <div className="bs-vcnt" id={`b-${battle.id}-av`} data-count={battle.left_votes || 0}>
-                          {(battle.left_votes || 0).toLocaleString("en-US")} votes
-                        </div>
-                      </div>
-                      <div className="bvs">
-                        <div className="bvs-line"></div>
-                        <div className="bvs-badge">VS</div>
-                        <div className="bvs-line"></div>
-                      </div>
-                      <div className="bside right">
-                        <div className="bs-cat">{battle.category}</div>
-                        <div className="bs-name">{battle.right_title}</div>
-                        <div className="bs-desc">{battle.right_desc}</div>
-                        <div className="bs-vcnt" id={`b-${battle.id}-bv`} data-count={battle.right_votes || 0}>
-                          {(battle.right_votes || 0).toLocaleString("en-US")} votes
-                        </div>
-                      </div>
-                    </div>
-                    <div className="battle-actions">
-                      <button type="button" className="b-vote-btn a" onClick={() => castBattle(battle.id, "a")}>
-                        {battle.left_title} ramro chha
-                      </button>
-                      <div className="bvs-or">or</div>
-                      <button type="button" className="b-vote-btn b" onClick={() => castBattle(battle.id, "b")}>
-                        {battle.right_title} ramro chha
-                      </button>
-                    </div>
-                    <div className="battle-result">
-                      <div className="result-wrap">
-                        <span className="rpct a" id={`b-${battle.id}-apct`}>{leftPct}%</span>
-                        <div className="rtrack">
-                          <div className="rfill-a" id={`b-${battle.id}-fa`} style={{ width: `${leftPct}%` }}></div>
-                          <div className="rfill-b" id={`b-${battle.id}-fb`} style={{ width: `${rightPct}%` }}></div>
-                        </div>
-                        <span className="rpct b" id={`b-${battle.id}-bpct`}>{rightPct}%</span>
-                      </div>
-                      <div className="rtotal" id={`b-${battle.id}-tot`}>
-                        {totalVotes.toLocaleString("en-US")} total votes
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="section section-deep" id="experience">
-        <div className="container">
-          <div className="sec-head">
-            <div className="sec-head-left">
-              <div className="sec-eyebrow">
-                <span className="sec-tag">COMMUNITY</span>
-                <div className="sec-rule"></div>
-              </div>
-              <h2 className="sec-title">KastoChha <em>Experience</em></h2>
-              <p className="sec-sub">Real opinions from real people, city ra gaun bata</p>
-            </div>
-          </div>
-
-          <div className="exp-layout bento-grid">
-            <div className="wall-panel bento-card">
-              <div className="wall-header">
-                <div className="wall-title">KastoChha Wall</div>
-                <div className="wall-sub">Real experiences, grouped by topic</div>
-              </div>
-              <ExperienceWall reviews={reviews} topicLimit={5} />
-              <a href="/experience" className="sec-all" style={{ marginTop: 16, display: "inline-block" }}>
-                See all experiences -&gt;
-              </a>
-            </div>
-
-            <div className="create-panel bento-card">
-              <div className="create-title">Your voice helps someone today</div>
-              <div className="create-sub">Honest opinions save time, money, and wrong decisions.</div>
-
-              <div className="cta-card ask" onClick={() => openModal("ask")}>
-                <span className="cta-icon"><IconQuestion className="icon" /></span>
-                <div className="cta-tag">Community Q and A</div>
-                <div className="cta-heading">Ask the community</div>
-                <div className="cta-desc">Kuch jannu chha? Sidha sodhnus. People share what actually happened.</div>
-                <button type="button" className="cta-btn ask-btn">Ask now -&gt;</button>
-              </div>
-
-              <div className="cta-card share" onClick={() => openModal("share")}>
-                <span className="cta-icon"><IconPen className="icon" /></span>
-                <div className="cta-tag">Real Experiences</div>
-                <div className="cta-heading">Share your experience</div>
-                <div className="cta-desc">Tapai ko experience share gare aru lai maddat huncha. Cost ra timeline mention gare ramro.</div>
-                <button type="button" className="cta-btn share-btn">Share now -&gt;</button>
-              </div>
-
-              {stats.length === 0 ? (
-                <div className="stat-empty">
-                  Add site stats in Supabase to show experience, question, and vote counts.
-                </div>
-              ) : (
-                <div className="stat-strip">
-                  {stats.map((stat) => (
-                    <div className="stat-box" key={stat.id}>
-                      <span className="stat-val">{stat.value}</span>
-                      <div className="stat-lbl">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <footer>
         <div className="foot-inner">
@@ -675,9 +526,9 @@ export default function HomeClient({
               <h5>Explore</h5>
               <ul>
                 <li><a href="/trending">Trending</a></li>
-                <li><a href="/featured">Featured</a></li>
                 <li><a href="/battle">Battle</a></li>
-                <li><a href="/experience">Experience</a></li>
+                <li><a href="/experience">Discussions</a></li>
+                <li><a href="/featured">Featured</a></li>
               </ul>
             </div>
             <div className="foot-col">
