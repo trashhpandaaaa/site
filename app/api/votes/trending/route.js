@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 import { createServerSupabase } from "../../../../lib/supabase/server";
-import { recordVote } from "../../../../lib/votes";
+import { recordVote, undoVote } from "../../../../lib/votes";
 import { checkRateLimit, retryAfterSeconds } from "../../../../lib/ratelimit";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -57,11 +57,20 @@ export async function POST(request) {
       { p_id: id, p_side: side }
     );
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
     const topic = Array.isArray(updated) ? updated[0] : updated;
-    if (!topic) {
+
+    if (updateError || !topic) {
+      // Counter never moved — release the ledger row so the vote isn't burned.
+      if (!vote.unguarded) {
+        await undoVote(supabase, { userId, targetType: "trending", targetId: id });
+      }
+      if (updateError) {
+        console.error("trending vote increment failed:", updateError.message);
+        return NextResponse.json(
+          { error: "Could not record your vote. Please try again." },
+          { status: 500 }
+        );
+      }
       return NextResponse.json({ error: "Topic not found." }, { status: 404 });
     }
 

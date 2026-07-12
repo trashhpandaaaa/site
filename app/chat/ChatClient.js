@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { formatTimeAgo } from "../../lib/topics";
+
 const SUGGESTIONS = [
   "Ncell vs NTC — kun ramro?",
   "Is the iPhone 16 worth it in Nepal?",
@@ -11,13 +13,15 @@ const SUGGESTIONS = [
   "Tips before renting a flat in Kathmandu"
 ];
 
-export default function ChatClient({ recent = [], prompts = [] }) {
+export default function ChatClient({ history = [], recent = [], prompts = [] }) {
   const searchParams = useSearchParams();
   const initialQuery = (searchParams.get("q") || "").trim();
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [historyItems, setHistoryItems] = useState(history);
+  const [clearing, setClearing] = useState(false);
 
   const idRef = useRef(0);
   const startedRef = useRef(false);
@@ -64,6 +68,15 @@ export default function ChatClient({ recent = [], prompts = [] }) {
           data?.error || "Sorry, something went wrong. Please try again."
         );
         return;
+      }
+
+      // Add this question to the visible history using the id the server logged.
+      const savedId = response.headers.get("X-Chat-Query-Id");
+      if (savedId) {
+        setHistoryItems((prev) => {
+          const next = prev.filter((item) => item.id !== savedId);
+          return [{ id: savedId, query: content, created_at: new Date().toISOString() }, ...next];
+        });
       }
 
       const reader = response.body.getReader();
@@ -122,6 +135,42 @@ export default function ChatClient({ recent = [], prompts = [] }) {
     textareaRef.current?.focus();
   };
 
+  const deleteHistoryItem = async (id) => {
+    const prev = historyItems;
+    setHistoryItems((items) => items.filter((item) => item.id !== id));
+    try {
+      const response = await fetch("/api/chat/history", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id })
+      });
+      if (!response.ok) setHistoryItems(prev); // revert on failure
+    } catch {
+      setHistoryItems(prev);
+    }
+  };
+
+  const clearHistory = async () => {
+    if (clearing || historyItems.length === 0) return;
+    const prev = historyItems;
+    setClearing(true);
+    setHistoryItems([]);
+    try {
+      const response = await fetch("/api/chat/history", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ all: true })
+      });
+      if (!response.ok) setHistoryItems(prev);
+    } catch {
+      setHistoryItems(prev);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const railPrompts = Array.from(new Set([...prompts, ...recent]))
     .filter(Boolean)
     .slice(0, 6);
@@ -145,20 +194,67 @@ export default function ChatClient({ recent = [], prompts = [] }) {
           </button>
         </div>
 
-        {railPrompts.length > 0 ? (
-          <div className="chat-side-block">
-            <div className="chat-side-label">Community is asking</div>
-            <ul className="chat-side-list">
-              {railPrompts.map((item) => (
-                <li key={item}>
-                  <button type="button" onClick={() => send(item)} disabled={streaming}>
-                    {item}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+        <div className="chat-side-scroll">
+          {historyItems.length > 0 ? (
+            <div className="chat-side-block">
+              <div className="chat-side-head">
+                <span className="chat-side-label">Your history</span>
+                <button
+                  type="button"
+                  className="chat-history-clear"
+                  onClick={clearHistory}
+                  disabled={clearing}
+                >
+                  Clear all
+                </button>
+              </div>
+              <ul className="chat-history-list">
+                {historyItems.map((item) => (
+                  <li key={item.id} className="chat-history-item">
+                    <button
+                      type="button"
+                      className="chat-history-open"
+                      onClick={() => send(item.query)}
+                      disabled={streaming}
+                      title={item.query}
+                    >
+                      <span className="chat-history-q">{item.query}</span>
+                      {item.created_at ? (
+                        <span className="chat-history-time">
+                          {formatTimeAgo(item.created_at)}
+                        </span>
+                      ) : null}
+                    </button>
+                    <button
+                      type="button"
+                      className="chat-history-del"
+                      onClick={() => deleteHistoryItem(item.id)}
+                      aria-label="Delete from history"
+                      title="Delete"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {railPrompts.length > 0 ? (
+            <div className="chat-side-block">
+              <div className="chat-side-label">Community is asking</div>
+              <ul className="chat-side-list">
+                {railPrompts.map((item) => (
+                  <li key={item}>
+                    <button type="button" onClick={() => send(item)} disabled={streaming}>
+                      {item}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
 
         <div className="chat-side-foot">
           <Link href="/" className="chat-side-home">← Back to KastoChha</Link>

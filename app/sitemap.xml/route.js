@@ -2,7 +2,7 @@ import { getBlogPostsForSitemap } from "../../lib/supabase/queries";
 
 export const dynamic = "force-dynamic";
 
-const STATIC_PATHS = ["", "/trending", "/featured", "/battle", "/experience", "/blog", "/chat"];
+const STATIC_PATHS = ["", "/trending", "/featured", "/battle", "/experience", "/chat"];
 
 function entry(loc, lastmod) {
   const lastmodTag = lastmod ? `<lastmod>${new Date(lastmod).toISOString()}</lastmod>` : "";

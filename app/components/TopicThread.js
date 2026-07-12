@@ -11,7 +11,7 @@ const VERDICT_OPTIONS = ["Ramro chha", "Thikai chha", "Naramro chha"];
 // and top comment, expanding to the full list of experiences with up/down votes,
 // reply/share actions, and an inline composer (when onReply is provided).
 // Shared by the homepage wall and the dedicated Experience page.
-export default function TopicThread({ topic, isOpen, onToggle, onVote, voted, onReply }) {
+export default function TopicThread({ topic, isOpen, onToggle, onVote, voted, voteOf, onReply }) {
   const total = topic.verdicts.pos + topic.verdicts.neu + topic.verdicts.neg;
   const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
 
@@ -22,15 +22,26 @@ export default function TopicThread({ topic, isOpen, onToggle, onVote, voted, on
   const [copiedId, setCopiedId] = useState(null);
   const composerRef = useRef(null);
 
-  // Reddit-style "best" ordering: highest score first, newest breaks ties.
-  const ordered = useMemo(
+  // Reddit-style "best" ordering, frozen while the thread stays open: the id
+  // order only recomputes when the thread is (re)opened or a comment is added,
+  // so voting updates counts in place instead of making items jump around.
+  const orderedIds = useMemo(
     () =>
-      [...topic.experiences].sort(
-        (a, b) =>
-          scoreOf(b) - scoreOf(a) || new Date(b.created_at) - new Date(a.created_at)
-      ),
-    [topic.experiences]
+      [...topic.experiences]
+        .sort(
+          (a, b) =>
+            scoreOf(b) - scoreOf(a) ||
+            new Date(b.created_at) - new Date(a.created_at)
+        )
+        .map((exp) => exp.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [topic.slug, isOpen, topic.experiences.length]
   );
+
+  // Resolve fresh objects each render so vote counts stay live.
+  const ordered = orderedIds
+    .map((id) => topic.experiences.find((exp) => exp.id === id))
+    .filter(Boolean);
 
   const isOp = (exp) => {
     if (topic.op?.user_id && exp.user_id) return exp.user_id === topic.op.user_id;
@@ -186,8 +197,9 @@ export default function TopicThread({ topic, isOpen, onToggle, onVote, voted, on
                 <div className="review-vote">
                   <button
                     type="button"
-                    className="vote-btn"
+                    className={`vote-btn ${voteOf?.(exp.id) === "up" ? "voted" : ""}`}
                     aria-label="Upvote"
+                    aria-pressed={voteOf?.(exp.id) === "up"}
                     disabled={voted?.has(exp.id)}
                     onClick={() => onVote(exp.id, "up")}
                   >
@@ -196,8 +208,9 @@ export default function TopicThread({ topic, isOpen, onToggle, onVote, voted, on
                   <span className="vote-count">{scoreOf(exp)}</span>
                   <button
                     type="button"
-                    className="vote-btn"
+                    className={`vote-btn ${voteOf?.(exp.id) === "down" ? "voted" : ""}`}
                     aria-label="Downvote"
+                    aria-pressed={voteOf?.(exp.id) === "down"}
                     disabled={voted?.has(exp.id)}
                     onClick={() => onVote(exp.id, "down")}
                   >

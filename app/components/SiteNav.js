@@ -9,18 +9,15 @@ const LINKS = [
   { href: "/trending", label: "Trending" },
   { href: "/featured", label: "Featured" },
   { href: "/battle", label: "Battle" },
-  { href: "/experience", label: "Experience" },
-  { href: "/blog", label: "Blog" }
+  { href: "/experience", label: "Experience" }
 ];
 
 // Single nav used across every page so links, mobile behaviour, and auth stay
 // consistent. Primary/secondary actions can be either links (href) or buttons
 // (onClick handlers, e.g. the homepage modal).
 export default function SiteNav({
-  askHref = "/chat",
   shareHref = "/experience#share-review",
   shareLabel = "Share a story",
-  onAsk,
   onShare
 }) {
   const [open, setOpen] = useState(false);
@@ -35,10 +32,6 @@ export default function SiteNav({
     document.body.classList.toggle("menu-open", open);
     return () => document.body.classList.remove("menu-open");
   }, [open]);
-
-  const ask = onAsk
-    ? <button type="button" className="btn-outline nav-ask" onClick={onAsk}>Ask community</button>
-    : <a className="btn-outline nav-ask" href={askHref}>Ask community</a>;
 
   const share = onShare
     ? <button type="button" className="btn-red" onClick={onShare}>{shareLabel}</button>
@@ -64,7 +57,6 @@ export default function SiteNav({
       </div>
 
       <div className="nav-actions">
-        {ask}
         {share}
         <NavAuth />
         <button
@@ -90,22 +82,6 @@ export default function SiteNav({
             {link.label}
           </a>
         ))}
-        <div className="nav-sheet-actions">
-          {onAsk ? (
-            <button
-              type="button"
-              className="btn-outline"
-              onClick={() => {
-                setOpen(false);
-                onAsk();
-              }}
-            >
-              Ask community
-            </button>
-          ) : (
-            <a className="btn-outline" href={askHref}>Ask community</a>
-          )}
-        </div>
       </div>
     </nav>
   );

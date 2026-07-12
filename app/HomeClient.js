@@ -26,6 +26,59 @@ const VERDICT_LABELS = {
   naramro: "Naramro chha"
 };
 
+const FOOTER_COLUMNS = [
+  {
+    title: "Explore",
+    links: [
+      { label: "Answer Engine", href: "/chat" },
+      { label: "Trending", href: "/trending" },
+      { label: "Battle", href: "/battle" },
+      { label: "Discussion", href: "/experience" },
+      { label: "Experience", href: "/experience" },
+      { label: "Reels", href: "/featured" },
+      { label: "Featured", href: "/featured" }
+    ]
+  },
+  {
+    title: "Our Channels",
+    links: [
+      { label: "KastoChha Paisa", href: "/featured" },
+      { label: "KastoChha Motors", href: "/featured" },
+      { label: "KastoChha Food", href: "/featured" },
+      { label: "KastoChha Travel", href: "/featured" },
+      { label: "KastoChha Career", href: "/featured" },
+      { label: "KastoChha Muglan", href: "/featured" },
+      { label: "KastoChha Entertainment", href: "/featured" },
+      { label: "KastoChha Tech & Gadgets", href: "/featured" },
+      { label: "KastoChha Health & Lifestyle", href: "/featured" }
+    ]
+  },
+  {
+    title: "Follow Us",
+    links: [
+      { label: "Facebook", href: "https://facebook.com", external: true },
+      { label: "Instagram", href: "https://instagram.com", external: true },
+      { label: "TikTok", href: "https://tiktok.com", external: true },
+      { label: "Reddit", href: "https://reddit.com", external: true },
+      { label: "YouTube", href: "https://youtube.com", external: true },
+      { label: "LinkedIn", href: "https://linkedin.com", external: true },
+      { label: "Pinterest", href: "https://pinterest.com", external: true },
+      { label: "X", href: "https://x.com", external: true },
+      { label: "Quora", href: "https://quora.com", external: true }
+    ]
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About Us", href: "/blog" },
+      { label: "Blog", href: "/blog" },
+      { label: "Contact Us", href: "/chat" },
+      { label: "Privacy Policy", href: "#" },
+      { label: "Terms", href: "#" }
+    ]
+  }
+];
+
 function FeaturedIcon({ type }) {
   if (type === "home") return <IconHome className="icon" />;
   if (type === "briefcase") return <IconBriefcase className="icon" />;
@@ -291,7 +344,7 @@ export default function HomeClient({
 
   return (
     <>
-      <SiteNav onAsk={() => openModal("ask")} onShare={() => openModal("share")} />
+      <SiteNav onShare={() => openModal("share")} />
 
       {marqueeLoop.length > 0 ? (
         <div className="marquee">
@@ -480,6 +533,7 @@ export default function HomeClient({
                 <h2 className="sec-title">Featured <em>KastoChha</em></h2>
                 <p className="sec-sub">Curated Reviews and In-Depth Editorial Opinions.</p>
               </div>
+              <a href="/featured" className="sec-all">Front page -&gt;</a>
             </div>
 
             <div className="feat-grid bento-grid fi">
@@ -525,47 +579,35 @@ export default function HomeClient({
         </section>
       ) : null}
 
-      <footer>
+      <footer className="site-footer">
         <div className="foot-inner">
           <div className="foot-grid">
-            <div>
-              <a href="#" className="foot-logo">Kasto<em>Chha</em></a>
+            <div className="foot-brand">
+              <a href="/" className="foot-logo">Kasto<em>Chha</em></a>
               <p className="foot-tagline">Nepal&apos;s community-driven platform for real experiences, honest opinions, and trusted recommendations.</p>
             </div>
-            <div className="foot-col">
-              <h5>Explore</h5>
-              <ul>
-                <li><a href="/chat">Answer Engine</a></li>
-                <li><a href="/trending">Trending</a></li>
-                <li><a href="/battle">Battle</a></li>
-                <li><a href="/experience">Discussions</a></li>
-                <li><a href="/featured">Featured</a></li>
-              </ul>
-            </div>
-            <div className="foot-col">
-              <h5>Topics</h5>
-              <ul>
-                <li><a href="#">Technology</a></li>
-                <li><a href="#">Career</a></li>
-                <li><a href="#">Education</a></li>
-                <li><a href="#">Housing</a></li>
-                <li><a href="#">Finance</a></li>
-              </ul>
-            </div>
-            <div className="foot-col">
-              <h5>About</h5>
-              <ul>
-                <li><a href="#">About Us</a></li>
-                <li><a href="#">Blog</a></li>
-                <li><a href="#">Contact</a></li>
-                <li><a href="#">Privacy Policy</a></li>
-                <li><a href="#">Terms</a></li>
-              </ul>
-            </div>
+            {FOOTER_COLUMNS.map((column) => (
+              <div className="foot-col" key={column.title}>
+                <h5>{column.title}</h5>
+                <ul>
+                  {column.links.map((link) => (
+                    <li key={link.label}>
+                      <a
+                        href={link.href}
+                        target={link.external ? "_blank" : undefined}
+                        rel={link.external ? "noreferrer" : undefined}
+                        onClick={link.href === "#" ? (event) => event.preventDefault() : undefined}
+                      >
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
           <div className="foot-bottom">
             <span>© 2026 KastoChha. Nepal&apos;s Curious Community Network.</span>
-            <span>Made with love in Kathmandu</span>
           </div>
         </div>
       </footer>

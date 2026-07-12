@@ -19,7 +19,7 @@ const CATEGORY_OPTIONS = [
 ];
 
 export default function ExperienceClient({ reviews = [] }) {
-  const { items, setItems, voted, handleVote } = useReviewVotes(reviews);
+  const { items, setItems, voted, handleVote, voteOf } = useReviewVotes(reviews);
   const [submitting, setSubmitting] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
   const [sortMode, setSortMode] = useState("discussed");
@@ -260,6 +260,7 @@ export default function ExperienceClient({ reviews = [] }) {
                       onToggle={toggleTopic}
                       onVote={handleVote}
                       voted={voted}
+                      voteOf={voteOf}
                       onReply={submitInlineReply}
                     />
                   ))

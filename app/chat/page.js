@@ -19,11 +19,14 @@ export default async function ChatPage() {
     getTrendingTopics(),
     getReviews(8),
     getRecentChatQueries(8),
-    getUserChatQueries(userId, 8)
+    getUserChatQueries(userId, 30)
   ]);
 
   const recent = uniqueStrings(recentQueries.map((item) => item.query));
-  const history = uniqueStrings(historyQueries.map((item) => item.query));
+  // Full rows (id + query + created_at) so the client can delete/organize them.
+  const history = historyQueries
+    .filter((item) => item?.id && item?.query)
+    .map((item) => ({ id: item.id, query: item.query, created_at: item.created_at }));
   const prompts = uniqueStrings([
     ...trending.map((topic) => topic.title),
     ...reviews.map((review) => review.topic || review.title)

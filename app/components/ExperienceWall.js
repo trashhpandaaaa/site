@@ -9,7 +9,7 @@ import { buildTopics } from "../../lib/topics";
 // Compact Reddit-style wall used on the homepage. Reuses the same topic grouping
 // and thread rendering as the Experience page, limited to the most active topics.
 export default function ExperienceWall({ reviews = [], topicLimit = 5 }) {
-  const { items, voted, handleVote } = useReviewVotes(reviews);
+  const { items, voted, handleVote, voteOf } = useReviewVotes(reviews);
   const [expanded, setExpanded] = useState(() => new Set());
 
   const topics = useMemo(() => {
@@ -48,6 +48,7 @@ export default function ExperienceWall({ reviews = [], topicLimit = 5 }) {
             onToggle={toggleTopic}
             onVote={handleVote}
             voted={voted}
+            voteOf={voteOf}
           />
         ))
       )}

@@ -133,10 +133,17 @@ export async function POST(request) {
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   const query = lastUser?.content || "";
 
-  // Log the query (best-effort, non-blocking).
+  // Log the query (best-effort, non-blocking). Capture the row id so the client
+  // can add it to the user's history list without a full refetch.
+  let queryId = "";
   try {
     const supabase = createServerSupabase();
-    await supabase.from("chat_queries").insert({ query, user_id: userId });
+    const { data } = await supabase
+      .from("chat_queries")
+      .insert({ query, user_id: userId })
+      .select("id")
+      .single();
+    queryId = data?.id || "";
   } catch {
     // Logging failures must not break the chat.
   }
@@ -176,7 +183,8 @@ export async function POST(request) {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
-      "X-Accel-Buffering": "no"
+      "X-Accel-Buffering": "no",
+      ...(queryId ? { "X-Chat-Query-Id": queryId } : {})
     }
   });
 }
