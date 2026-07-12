@@ -22,7 +22,7 @@ export default function ExperienceClient({ reviews = [] }) {
   const { items, setItems, voted, handleVote } = useReviewVotes(reviews);
   const [submitting, setSubmitting] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
-  const [sortMode, setSortMode] = useState("active");
+  const [sortMode, setSortMode] = useState("discussed");
   const [expanded, setExpanded] = useState(() => new Set());
   const [error, setError] = useState("");
 
@@ -82,6 +82,43 @@ export default function ExperienceClient({ reviews = [] }) {
       else next.add(slug);
       return next;
     });
+  };
+
+  // Inline Reddit-style reply: posts into the same reviews pool with the
+  // thread's canonical topic + category so it lands in this thread.
+  const submitInlineReply = async (topicItem, { summary, verdict }) => {
+    try {
+      const response = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: topicItem.title,
+          category: topicItem.category,
+          verdict: verdict || "",
+          summary
+        })
+      });
+
+      if (response.status === 401) {
+        window.location.href = "/sign-in";
+        return { ok: false };
+      }
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        return { ok: false, error: data?.error || "Could not post your reply. Try again." };
+      }
+
+      const data = await response.json();
+      if (data?.review) {
+        setItems((prev) => [data.review, ...prev]);
+        setExpanded((prev) => new Set(prev).add(topicItem.slug));
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Could not post your reply. Try again." };
+    }
   };
 
   const submitReview = async (event) => {
@@ -149,11 +186,12 @@ export default function ExperienceClient({ reviews = [] }) {
         <div className="page-shell">
           <div className="page-head">
             <div>
-              <div className="page-kicker">COMMUNITY EXPERIENCES</div>
-              <h1 className="page-title">KastoChha Experience</h1>
+              <div className="page-kicker">NEPAL&apos;S CURIOUS COMMUNITY</div>
+              <h1 className="page-title">KastoChha <em>Experience</em></h1>
               <p className="page-sub">
-                Real stories, grouped by topic. Post yours and it joins everyone
-                else talking about the same thing.
+                From momo to mausam, gadgets to careers — real experiences from
+                people across Nepal, grouped by topic. Vote, reply, and post
+                yours; it joins everyone talking about the same thing.
               </p>
             </div>
             <div className="page-actions">
@@ -187,9 +225,9 @@ export default function ExperienceClient({ reviews = [] }) {
                 </span>
                 <div className="review-sort">
                   {[
-                    { key: "active", label: "Active" },
-                    { key: "top", label: "Top" },
-                    { key: "discussed", label: "Most shared" }
+                    { key: "discussed", label: "Hot" },
+                    { key: "active", label: "New" },
+                    { key: "top", label: "Top" }
                   ].map((option) => (
                     <button
                       key={option.key}
@@ -222,6 +260,7 @@ export default function ExperienceClient({ reviews = [] }) {
                       onToggle={toggleTopic}
                       onVote={handleVote}
                       voted={voted}
+                      onReply={submitInlineReply}
                     />
                   ))
                 )}

@@ -307,7 +307,7 @@ export default function HomeClient({
         <div className="hero-glow"></div>
         <div className="kicker">
           <span className="kicker-dot"></span>
-          Nepal ko real talk, seedha kura
+          Nepal&apos;s Curious Community Network
         </div>
         <h1>
           Nepal ma sabai kura...
@@ -315,7 +315,8 @@ export default function HomeClient({
           <em>KastoChha?</em>
         </h1>
         <p className="hero-sub">
-          Real opinions from real people. Price, service, and long term use - no paid hype.
+          From momo to mausam, gadgets to careers — real opinions, honest
+          experiences, and community answers.
         </p>
 
         <div className="search-wrap">
@@ -323,7 +324,7 @@ export default function HomeClient({
             <input
               id="srch"
               type="text"
-              placeholder="Search anything... (e.g. phone review)"
+              placeholder="Explore your curiosity..."
               autoComplete="off"
               onKeyDown={handleSearchKey}
             />
@@ -413,17 +414,26 @@ export default function HomeClient({
           <DiscussionsGrid reviews={reviews} limit={6} />
 
           <div className="join-band">
+            <div className="join-intro">
+              <h2 className="join-title">
+                Share Your <span>KastoChha</span> Experience
+              </h2>
+              <p className="join-intro-desc">
+                Sharing your honest experience might help thousands of Nepalis
+                make better decisions every day. Whether it&apos;s a product you
+                bought, a job you tried, a college you attended, or a place you
+                visited — your real experience matters.
+              </p>
+            </div>
             <div className="join-card ask" onClick={() => openModal("ask")}>
-              <span className="join-tag">Community Q and A</span>
-              <div className="join-heading">Ask the community</div>
-              <div className="join-desc">Kuch jannu chha? Sidha sodhnus. People share what actually happened.</div>
-              <span className="join-go">Ask now -&gt;</span>
+              <div className="join-heading">Ask a KastoChha</div>
+              <div className="join-desc">Ask anything about Nepal and get real answers, honest reviews, and community opinions from thousands of Nepalis.</div>
+              <span className="join-go">Ask Now -&gt;</span>
             </div>
             <div className="join-card share" onClick={() => openModal("share")}>
-              <span className="join-tag">Real Experiences</span>
-              <div className="join-heading">Share your experience</div>
-              <div className="join-desc">Tapai ko experience share gare aru lai maddat huncha. Cost ra timeline mention gare ramro.</div>
-              <span className="join-go">Share now -&gt;</span>
+              <div className="join-heading">Share Your Experience</div>
+              <div className="join-desc">Help others make smarter decisions with your honest review, real experience, or opinion — about anything in Nepal.</div>
+              <span className="join-go">Share Now -&gt;</span>
             </div>
           </div>
 
@@ -464,11 +474,11 @@ export default function HomeClient({
             <div className="sec-head">
               <div className="sec-head-left">
                 <div className="sec-eyebrow">
-                  <span className="sec-tag">EDITOR PICK</span>
+                  <span className="sec-tag">EDITOR&apos;S PICK</span>
                   <div className="sec-rule"></div>
                 </div>
                 <h2 className="sec-title">Featured <em>KastoChha</em></h2>
-                <p className="sec-sub">Curated stories with long threads and real receipts</p>
+                <p className="sec-sub">Curated Reviews and In-Depth Editorial Opinions.</p>
               </div>
             </div>
 
@@ -520,11 +530,12 @@ export default function HomeClient({
           <div className="foot-grid">
             <div>
               <a href="#" className="foot-logo">Kasto<em>Chha</em></a>
-              <p className="foot-tagline">Nepal ko real talk platform. Real opinions, no drama. Built for Nepalis, by Nepalis.</p>
+              <p className="foot-tagline">Nepal&apos;s community-driven platform for real experiences, honest opinions, and trusted recommendations.</p>
             </div>
             <div className="foot-col">
               <h5>Explore</h5>
               <ul>
+                <li><a href="/chat">Answer Engine</a></li>
                 <li><a href="/trending">Trending</a></li>
                 <li><a href="/battle">Battle</a></li>
                 <li><a href="/experience">Discussions</a></li>
@@ -552,9 +563,8 @@ export default function HomeClient({
               </ul>
             </div>
           </div>
-          <div className="foot-mark" aria-hidden="true">KastoChha</div>
           <div className="foot-bottom">
-            <span>Copyright 2025 KastoChha. Nepal ko real talk.</span>
+            <span>© 2026 KastoChha. Nepal&apos;s Curious Community Network.</span>
             <span>Made with love in Kathmandu</span>
           </div>
         </div>
