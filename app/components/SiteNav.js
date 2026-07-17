@@ -40,7 +40,7 @@ export default function SiteNav({
   return (
     <nav id="mainnav" className={open ? "nav-open" : ""}>
       <a href="/" className="logo" aria-label="KastoChha home">
-        Kasto<em>Chha</em>
+        <img src="/kastochha-logo.svg" alt="KastoChha" />
       </a>
 
       <div className="nav-links" aria-label="Primary">

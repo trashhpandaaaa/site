@@ -1,27 +1,32 @@
 import SiteNav from "../../components/SiteNav";
-import DiscussionsGrid from "../../components/DiscussionsGrid";
 import SharePanel from "../../components/SharePanel";
-import { getReviewById } from "../../../lib/supabase/queries";
+import ThreadClient from "./ThreadClient";
+import { getReviewById, getReviews } from "../../../lib/supabase/queries";
+import { topicSlug } from "../../../lib/slug";
 import { shareMetadata } from "../../../lib/share";
 
 export const dynamic = "force-dynamic";
 
+// Same slug fallback buildTopics uses, so this page groups identically to the
+// Experience wall even for rows created before the topic_slug column existed.
+const slugOf = (review) =>
+  review.topic_slug || topicSlug(review.topic || review.title) || "general";
+
 export async function generateMetadata({ params }) {
   const review = await getReviewById(params.id);
   if (!review) return { title: "Discussion not found - KastoChha" };
-  const replies = review.comment_count || 0;
   const likes = review.upvotes || 0;
   return shareMetadata({
     type: "discussions",
     path: `/discussions/${review.id}`,
-    title: review.title || review.topic || "KastoChha discussion",
+    title: review.topic || review.title || "KastoChha discussion",
     description: review.summary,
     kicker: review.category,
-    stat: `${replies} replies · ${likes} likes`
+    stat: `${likes} likes`
   });
 }
 
-export default async function DiscussionPermalink({ params }) {
+export default async function DiscussionThreadPage({ params }) {
   const review = await getReviewById(params.id);
 
   if (!review) {
@@ -34,6 +39,15 @@ export default async function DiscussionPermalink({ params }) {
     );
   }
 
+  // Pull the whole thread: every experience sharing this review's topic slug.
+  const pool = await getReviews(200);
+  const slug = slugOf(review);
+  const thread = pool.filter((item) => slugOf(item) === slug);
+  if (!thread.some((item) => item.id === review.id)) {
+    thread.push(review);
+  }
+  const replies = thread.length - 1;
+
   return (
     <>
       <SiteNav />
@@ -43,8 +57,12 @@ export default async function DiscussionPermalink({ params }) {
           <div className="page-head">
             <div>
               <div className="page-kicker">{review.category}</div>
-              <h1 className="page-title">{review.title || review.topic}</h1>
-              {review.summary ? <p className="page-sub">{review.summary}</p> : null}
+              <h1 className="page-title">{review.topic || review.title}</h1>
+              <p className="page-sub">
+                {thread.length} experience{thread.length === 1 ? "" : "s"} ·{" "}
+                {replies} {replies === 1 ? "reply" : "replies"} — read what the
+                community says, vote, and add your own.
+              </p>
             </div>
             <a className="sec-all" href="/experience">All discussions -&gt;</a>
           </div>
@@ -52,11 +70,11 @@ export default async function DiscussionPermalink({ params }) {
       </div>
 
       <section className="section">
-        <div className="permalink-single" style={{ maxWidth: 560 }}>
-          <DiscussionsGrid reviews={[review]} limit={1} />
+        <div className="permalink-single" style={{ maxWidth: 760 }}>
+          <ThreadClient reviews={thread} threadSlug={slug} />
           <SharePanel
             url={`/discussions/${review.id}`}
-            text={review.title || review.topic || "KastoChha discussion"}
+            text={review.topic || review.title || "KastoChha discussion"}
             heading="Share this discussion"
           />
         </div>

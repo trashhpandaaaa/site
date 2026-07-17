@@ -42,14 +42,14 @@ const FOOTER_COLUMNS = [
   {
     title: "Our Channels",
     links: [
-      { label: "KastoChha Paisa", href: "/featured" },
-      { label: "KastoChha Motors", href: "/featured" },
-      { label: "KastoChha Food", href: "/featured" },
+      { label: "KastoChha Paisa", href: "https://www.instagram.com/kasto_chha_paisa/", external: true },
+      { label: "KastoChha Motors", href: "https://www.instagram.com/kasto_chha_motors/", external: true },
+      { label: "KastoChha Food", href: "https://www.instagram.com/kasto_chha_foods/", external: true },
       { label: "KastoChha Travel", href: "/featured" },
       { label: "KastoChha Career", href: "/featured" },
       { label: "KastoChha Muglan", href: "/featured" },
-      { label: "KastoChha Entertainment", href: "/featured" },
-      { label: "KastoChha Tech & Gadgets", href: "/featured" },
+      { label: "KastoChha Entertainment", href: "https://www.instagram.com/kasto_chha_entertainment/", external: true },
+      { label: "KastoChha Tech & Gadgets", href: "https://www.instagram.com/kasto_chha_tech_gadgets/", external: true },
       { label: "KastoChha Health & Lifestyle", href: "/featured" }
     ]
   },
@@ -57,7 +57,7 @@ const FOOTER_COLUMNS = [
     title: "Follow Us",
     links: [
       { label: "Facebook", href: "https://facebook.com", external: true },
-      { label: "Instagram", href: "https://instagram.com", external: true },
+      { label: "Instagram", href: "https://www.instagram.com/kasto_chha/", external: true },
       { label: "TikTok", href: "https://tiktok.com", external: true },
       { label: "Reddit", href: "https://reddit.com", external: true },
       { label: "YouTube", href: "https://youtube.com", external: true },
@@ -322,7 +322,14 @@ export default function HomeClient({
   const uniqueTitles = Array.from(
     new Set(trending.map((topic) => topic.title).filter((title) => Boolean(title)))
   );
-  const chipItems = uniqueTitles.slice(0, 6);
+  // Curated quick-search chips under the hero search bar.
+  const chipItems = [
+    "Loksewa exam kasto chha?",
+    "BYD ko gaadi kasto chha?",
+    "ABC Trek kasto chha?",
+    "Sandar ko momo kasto chha?",
+    "IPO parne chance kasto chha?"
+  ];
   const searchItems = uniqueTitles.slice(0, 5);
   const suggestedQuestions = uniqueTitles.slice(0, 4);
 
@@ -365,7 +372,7 @@ export default function HomeClient({
         <h1>
           Nepal ma sabai kura...
           <br />
-          <em>KastoChha?</em>
+          <img src="/kastochha-logo.svg" alt="KastoChha?" className="hero-logo" />
         </h1>
         <p className="hero-sub">
           From momo to mausam, gadgets to careers — real opinions, honest
@@ -419,7 +426,6 @@ export default function HomeClient({
           <div className="sec-head">
             <div className="sec-head-left">
               <div className="sec-eyebrow">
-                <span className="sec-tag">LIVE</span>
                 <div className="sec-rule"></div>
               </div>
               <h2 className="sec-title">Trending <em>KastoChha</em></h2>
@@ -437,7 +443,6 @@ export default function HomeClient({
           <div className="sec-head">
             <div className="sec-head-left">
               <div className="sec-eyebrow">
-                <span className="sec-tag">VOTE NOW</span>
                 <div className="sec-rule"></div>
               </div>
               <h2 className="sec-title">KastoChha <em>Battle</em></h2>
@@ -455,7 +460,6 @@ export default function HomeClient({
           <div className="sec-head">
             <div className="sec-head-left">
               <div className="sec-eyebrow">
-                <span className="sec-tag">COMMUNITY</span>
                 <div className="sec-rule"></div>
               </div>
               <h2 className="sec-title">KastoChha <em>Discussions</em></h2>
@@ -508,7 +512,6 @@ export default function HomeClient({
           <div className="sec-head">
             <div className="sec-head-left">
               <div className="sec-eyebrow">
-                <span className="sec-tag">WATCH</span>
                 <div className="sec-rule"></div>
               </div>
               <h2 className="sec-title">KastoChha <em>Reels</em></h2>
@@ -527,7 +530,6 @@ export default function HomeClient({
             <div className="sec-head">
               <div className="sec-head-left">
                 <div className="sec-eyebrow">
-                  <span className="sec-tag">EDITOR&apos;S PICK</span>
                   <div className="sec-rule"></div>
                 </div>
                 <h2 className="sec-title">Featured <em>KastoChha</em></h2>
