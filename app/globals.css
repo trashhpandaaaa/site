@@ -1660,6 +1660,7 @@ nav.nav-open .nav-sheet-link{opacity:1;transform:none}
 	scroll-snap-align:start;text-decoration:none;cursor:pointer;
 	display:flex;flex-direction:column;justify-content:flex-end;padding:20px;
 	box-shadow:0 12px 30px rgba(12,11,9,.12);transition:transform .2s,box-shadow .2s;
+	background-size:cover;background-position:center;
 }
 .reel-card::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(8,6,5,.55) 100%);pointer-events:none}
 .reel-card:hover{transform:translateY(-4px);box-shadow:0 22px 44px rgba(12,11,9,.2)}
